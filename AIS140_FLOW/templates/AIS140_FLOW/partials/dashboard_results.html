@@ -1,0 +1,102 @@
+{% load ais140_extras %}
+<div class="dashboard-cards">
+    <div class="stat-card">
+        <div class="stat-label">Requests Received</div>
+        <div class="stat-value">{{ stats.received_count }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Requests Completed</div>
+        <div class="stat-value">{{ stats.completed_count }}</div>
+    </div>
+</div>
+
+<div id="chart-data-holder" data-stats='{{ stats_json|escapejs }}'></div>
+
+<div class="table-wrap">
+<table class="rt-table">
+    <thead>
+        <tr>
+            <th>Unique ID</th>
+            <th>AL Assigned Date</th>
+            <th>Assigned to Engineer</th>
+            <th>Reassigned TO DTIL</th>
+            <th>State</th>
+            <th>Chassis No</th>
+            <th>PSN No</th>
+            <th>Req Type</th>
+            <th>Customer Name</th>
+            <th>Assigned To</th>
+            <th>Ticket Through</th>
+            <th>Latest Remarks</th>
+            <th>Latest Comments</th>
+            <th>Responsibility</th>
+            <th>Latest Update</th>
+            <th>Comp Status</th>
+            <th>Comp Date</th>
+            <th>D1 TAT</th>
+            <th>Total TAT</th>
+            <th>IMEI</th>
+            <th>ICCID</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+        {% with t=row.ticket latest=row.latest %}
+        <tr>
+            <td>
+                <a class="eye-icon" title="View history" data-history-url="{% url 'ticket_history_partial' t.id %}">&#128065;</a>
+                <a href="{% url 'part_b_form' t.id %}">{{ t.unique_id }}</a>
+            </td>
+            <td>{{ t.date_of_request|date:"d-M-Y H:i" }}</td>
+            <td>{{ t.assigned_engineer_email|default:"" }}</td>
+            <td>{{ t.reupdated_request_al|date:"d-M-Y H:i"|default:"" }}</td>
+            <td>{{ t.state|default:"" }}</td>
+            <td>{{ t.vin_no|default:"" }}</td>
+            <td>{{ t.psn|default:"" }}</td>
+            <td>{{ t.request_type|default:"" }}</td>
+            <td>{{ t.customer_name|default:"" }}</td>
+            <td>{{ t.assigned_to|default:"" }}</td>
+            <td>{{ t.ticket_through|default:"" }}</td>
+            <td>{{ latest.remark|default:""|truncatechars:35 }}</td>
+            <td>{{ latest.comments|default:""|truncatechars:35 }}</td>
+            <td>
+                {% if latest.responsibility %}
+                <span class="badge badge-{{ latest.responsibility|slug_badge }}">{{ latest.responsibility }}</span>
+                {% endif %}
+            </td>
+            <td>{{ latest.updated_at|date:"d-M-Y H:i" }}</td>
+            <td>{{ t.completion_status|default:"" }}</td>
+            <td>{{ t.completion_date|date:"d-M-Y H:i" }}</td>
+            <td>{{ t.D1_TAT|default:"" }}</td>
+            <td>{{ t.total_tat|default:"" }}</td>
+            <td>{{ t.imei_no|default:"" }}</td>
+            <td>{{ t.icicid_no|default:"" }}</td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr><td colspan="20">No tickets found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<div class="pagination">
+    {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}&{{ filter_qs }}">Prev</a>
+    {% endif %}
+    <span class="current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}&{{ filter_qs }}">Next</a>
+    {% endif %}
+</div>
+
+<div class="chart-row">
+    <div class="chart-box">
+        <h4>State-wise Received vs Completed</h4>
+        <canvas id="state-bar-chart"></canvas>
+    </div>
+    <div class="chart-box">
+        <h4>Engineer-wise Completed Tickets</h4>
+        <canvas id="engineer-pie-chart"></canvas>
+    </div>
+</div>

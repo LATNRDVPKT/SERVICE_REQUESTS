@@ -1,0 +1,11 @@
+<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1f242e;">
+    <p>Hello,</p>
+    <p>A request remark has been recorded on ticket <strong>{{ ticket.unique_id }}</strong>.</p>
+    <table cellpadding="6" style="border-collapse: collapse;">
+        <tr><td><strong>Request Remarks</strong></td><td>{{ ticket.request_remarks|default:"-" }}</td></tr>
+        <tr><td><strong>Request Comments</strong></td><td>{{ ticket.request_comments|default:"-" }}</td></tr>
+        <tr><td><strong>Attending Engineer</strong></td><td>{{ ticket.attending_engineer|default:"-" }}</td></tr>
+    </table>
+    <p><a href="{{ part_b_url }}">Open this ticket in Part-B</a></p>
+    <p style="color:#5a6472; font-size:12px;">This is an automated notification from the AIS140 workflow system.</p>
+</div>

@@ -1,0 +1,46 @@
+<div class="dashboard-cards">
+    <div class="stat-card"><div class="stat-label">Total Invoices</div><div class="stat-value">{{ page_obj.paginator.count }}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Value (GST incl.)</div><div class="stat-value">{{ totals.total_value|default:0|floatformat:0 }}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Qty</div><div class="stat-value">{{ totals.total_qty|default:0 }}</div></div>
+</div>
+
+<div class="table-wrap">
+<table class="rt-table">
+    <thead>
+        <tr>
+            <th>Unique ID</th><th>Invoice No</th><th>Invoice Date</th><th>Customer</th><th>Location</th>
+            <th>Product</th><th>Qty</th><th>Value (GST incl.)</th><th>Payment Status</th>
+            <th>Due Date</th><th>Received Date</th><th>GRN No</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for record in page_obj %}
+        <tr>
+            <td>
+                <a class="eye-icon" title="View change history" data-history-url="{% url 'billing_record_history_partial' record.pk %}">&#128065;</a>
+                <a href="{% url 'billing_add_detail' record.pk %}">{{ record.unique_id }}</a>
+            </td>
+            <td>{{ record.invoice_no|default:"" }}</td>
+            <td>{{ record.invoice_date|date:"d-M-Y" }}</td>
+            <td>{{ record.customer_name|default:"" }}</td>
+            <td>{{ record.location|default:"" }}</td>
+            <td>{{ record.product|default:"" }}</td>
+            <td>{{ record.qty|default:"" }}</td>
+            <td>{{ record.total_invoice_value_with_gst|default:"" }}</td>
+            <td>{{ record.payment_status|default:"" }}</td>
+            <td>{{ record.due_date|date:"d-M-Y"|default:"" }}</td>
+            <td>{{ record.received_date|date:"d-M-Y"|default:"" }}</td>
+            <td>{{ record.grn_no|default:"" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="12">No invoices found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<div class="pagination">
+    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&{{ filter_qs }}">Prev</a>{% endif %}
+    <span class="current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&{{ filter_qs }}">Next</a>{% endif %}
+</div>

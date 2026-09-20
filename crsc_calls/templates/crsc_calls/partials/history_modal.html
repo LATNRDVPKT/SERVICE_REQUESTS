@@ -1,0 +1,33 @@
+{% load crsc_extras %}
+<h3>History — {{ call.unique_id }} ({{ call.vin }})</h3>
+<table class="rt-table" style="white-space: normal;">
+    <thead>
+        <tr>
+            <th>Unique ID</th><th>Follow-Up</th><th>Remarks</th><th>Comments</th>
+            <th>Engineer</th><th>Date/Time</th><th>Next Follow-Up Exp Date</th><th>AL Updated Contact No</th>
+            <th>Responsibility</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for h in history %}
+        <tr>
+            <td>{{ h.unique_id }}</td>
+            <td>{{ h.follow_up_level|default:"-" }}</td>
+            <td>{{ h.remark }}</td>
+            <td>{{ h.comment }}</td>
+            <td>{{ h.engineer|default:"-" }}</td>
+            <td>{{ h.event_datetime|date:"d-M-Y H:i" }}</td>
+            <td>{{ h.next_follow_up_exp_date|date:"d-M-Y H:i"|default:"-" }}</td>
+            <td>{{ h.al_updated_contact_no|default:"-" }}</td>
+            <td>
+                {% if h.responsibility %}
+                <span class="badge badge-{{ h.responsibility|slug_badge }}">{{ h.responsibility }}</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9">No history recorded yet for this call.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+<div class="btn-row"><a class="btn secondary modal-close" style="cursor:pointer;">Close</a></div>

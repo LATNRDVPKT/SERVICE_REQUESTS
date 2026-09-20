@@ -1,0 +1,18 @@
+<h3>Change History — {{ record.unique_id }}</h3>
+<table class="rt-table diff-table" style="white-space: normal;">
+    <thead><tr><th>Field</th><th>From</th><th>To</th><th>Changed By</th><th>When</th></tr></thead>
+    <tbody>
+        {% for h in history %}
+        <tr>
+            <td>{{ h.field_label }}</td>
+            <td class="old-val">{{ h.old_value|default:"(blank)" }}</td>
+            <td class="new-val">{{ h.new_value|default:"(blank)" }}</td>
+            <td>{{ h.changed_by|default:"-" }}</td>
+            <td>{{ h.changed_at|date:"d-M-Y H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">No changes recorded yet for this invoice.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+<div class="btn-row"><a class="btn secondary modal-close" style="cursor:pointer;">Close</a></div>

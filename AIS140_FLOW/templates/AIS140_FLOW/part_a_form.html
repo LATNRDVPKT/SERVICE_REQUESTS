@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load ais140_extras %}
+{% block title %}Part-A — {% if is_new %}New Ticket{% else %}{{ ticket.unique_id }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-title">
+    {% if is_new %}New AIS140 Ticket (Part-A){% else %}Edit Ticket — {{ ticket.unique_id }}{% endif %}
+    <span class="page-title-hint">Fields marked <span class="required-star">*</span> are mandatory.</span>
+</div>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"request_id,ticket_through,date_of_request,Customer_assigned_date,AL_assigned_date,reupdated_request_al,request_type,category,assigned_to,assigned_engineer_email,requested_by,requested_name,requested_phone_number" %}
+                    {% include "AIS140_FLOW/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"customer_name,customer_phone,Customer_Alternate_number,Customer_Email_ID,Cust_veh_Regn_Address" %}
+                    {% include "AIS140_FLOW/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"vin_no,engine,vehicle_no,vehicle_model,manufacturing_year,AIS140_Type,pan_card,aadhar_card,device_model,psn" %}
+                    {% include "AIS140_FLOW/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"dealer_name,dealer_code,Dealer_mail,rto_code,rto_name,state,ao_name,ro,zone" %}
+                    {% include "AIS140_FLOW/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"AL_remarks,AL_comments" %}
+                    {% include "AIS140_FLOW/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="btn-row">
+        <button type="submit" class="btn">Save Ticket</button>
+        <a href="{% url 'real_time_page' %}" class="btn secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}

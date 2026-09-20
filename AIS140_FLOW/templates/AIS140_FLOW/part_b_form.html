@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load ais140_extras %}
+{% block title %}Part-B — {{ ticket.unique_id }}{% endblock %}
+
+{% block content %}
+<div class="page-title">
+    <a class="eye-icon" title="View history" data-history-url="{% url 'ticket_history_partial' ticket.id %}">&#128065;</a>
+    Part-B — {{ ticket.unique_id }}
+    {% if read_only %}<span class="locked-badge">Closed — read only</span>{% endif %}
+</div>
+
+<div class="card readonly-summary">
+    <div class="form-grid readonly-grid">
+        <div class="ro-field"><label>Unique ID</label><div>{{ ticket.unique_id }}</div></div>
+        <div class="ro-field"><label>AL Request ID</label><div>{{ ticket.request_id|default:"-" }}</div></div>
+        <div class="ro-field"><label>Ticket Through</label><div>{{ ticket.ticket_through }}</div></div>
+        <div class="ro-field"><label>Customer Name</label><div>{{ ticket.customer_name }}</div></div>
+        <div class="ro-field"><label>Customer Phone</label><div>{{ ticket.customer_phone }}</div></div>
+        <div class="ro-field"><label>Chassis No</label><div>{{ ticket.vin_no }}</div></div>
+        <div class="ro-field"><label>PSN No</label><div>{{ ticket.psn }}</div></div>
+        <div class="ro-field"><label>Dealer Name</label><div>{{ ticket.dealer_name|default:"-" }}</div></div>
+        <div class="ro-field"><label>RTO Name</label><div>{{ ticket.rto_name|default:"-" }}</div></div>
+        <div class="ro-field"><label>State</label><div>{{ ticket.state|default:"-" }}</div></div>
+        <div class="ro-field"><label>Request Type</label><div>{{ ticket.request_type }}</div></div>
+        <div class="ro-field"><label>Assigned Engineer</label><div>{{ ticket.assigned_engineer_email }}</div></div>
+        <div class="ro-field"><label>Update to AL API</label><div>{{ ticket.Update_to_AL_API|default:"Not determined yet" }}</div></div>
+    </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" id="part-b-form" novalidate>
+    {% csrf_token %}
+    <fieldset {% if read_only %}disabled{% endif %} style="border:none; padding:0; margin:0;">
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"device_model,icicid_no,imei_no,additional_email_id,attending_engineer,request_remarks,request_comments" %}
+                    {% include "AIS140_FLOW/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"temp_cert_reqd,upload_certificate_in_ialert,temp_cert_date,temp_raised_by,upload_certificate_in_ialert_02,upload_certificate_in_ialert_01,completion_status,Update_to_AL_API,completion_date" %}
+                    {% include "AIS140_FLOW/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"certification_start_date,certification_end_date,rto_approval_date,vahan_date,vahan_uploaded_by,veh_run_kms,total_run_kms" %}
+                    {% include "AIS140_FLOW/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if not read_only %}
+    <div class="btn-row">
+        <button type="submit" class="btn">Save Ticket</button>
+        <a href="{% url 'real_time_page' %}" class="btn secondary">Back to Dashboard</a>
+    </div>
+    {% else %}
+    <div class="btn-row">
+        <a href="{% url 'real_time_page' %}" class="btn secondary">Back to Dashboard</a>
+    </div>
+    {% endif %}
+
+    </fieldset>
+</form>
+{% endblock %}

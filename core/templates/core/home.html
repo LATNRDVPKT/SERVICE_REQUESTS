@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Service Requests — Home{% endblock %}
+
+{% block content %}
+<div class="page-title">Welcome, {{ user.profile.display_name|default:user.username }}</div>
+<div class="page-subtitle">Choose a module to continue.</div>
+
+<div class="module-grid">
+    <a class="module-card" href="{% url 'real_time_page' %}">
+        <h3>AIS140</h3>
+        <p>Certification ticket tracking — Part-A intake, Part-B resolution, iAlert &amp; Darby integration.</p>
+    </a>
+    <a class="module-card" href="{% url 'crsc_real_time_page' %}">
+        <h3>CRSC Calls</h3>
+        <p>Customer complaint intake, engineer follow-up (D1/D2/D3), FIR approval workflow.</p>
+    </a>
+    {% if user.profile.role == 'admin' %}
+    <a class="module-card" href="{% url 'billing_real_time_page' %}">
+        <h3>Billing</h3>
+        <p>Invoice tracking, payment due dates, GRN status. Admins only.</p>
+    </a>
+    {% endif %}
+</div>
+{% endblock %}

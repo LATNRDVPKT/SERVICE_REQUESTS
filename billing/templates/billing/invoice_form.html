@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Billing — {% if record %}Edit Invoice{% else %}New Invoice{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-title">{% if record %}Edit Invoice — {{ record.unique_id }}{% else %}New Invoice{% endif %}</div>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+            <div class="field {% if field.errors %}has-error{% endif %}">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="btn-row">
+        <button type="submit" class="btn">Save Invoice</button>
+        <a href="{% url 'billing_real_time_page' %}" class="btn secondary">Back to Dashboard</a>
+    </div>
+</form>
+{% endblock %}

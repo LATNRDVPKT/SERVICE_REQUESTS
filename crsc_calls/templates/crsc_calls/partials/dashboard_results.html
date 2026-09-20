@@ -1,0 +1,62 @@
+{% load crsc_extras %}
+<div class="dashboard-cards">
+    <div class="stat-card"><div class="stat-label">Received</div><div class="stat-value">{{ stats.received_count }}</div></div>
+    <div class="stat-card"><div class="stat-label">Closed</div><div class="stat-value">{{ stats.closed_count }}</div></div>
+    <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value">{{ stats.pending_count }}</div></div>
+</div>
+
+<div id="crsc-chart-data-holder" data-stats='{{ stats_json|escapejs }}'></div>
+
+<div class="table-wrap">
+<table class="rt-table">
+    <thead>
+        <tr>
+            <th>Unique ID</th><th>Date of Complaint</th><th>VIN</th><th>PSN</th>
+            <th>Engineer Responsible</th><th>Call Type</th><th>Call Status</th>
+            <th>Follow-Up</th><th>Remark</th><th>Comment</th><th>Next Follow-Up Exp Date</th>
+            <th>Responsibility</th><th>Latest Update</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+        {% with c=row.call latest=row.latest %}
+        <tr>
+            <td>
+                <a class="eye-icon" title="View history" data-history-url="{% url 'crsc_call_history_partial' c.id %}">&#128065;</a>
+                <a href="{% url 'crsc_engineer_form' c.id %}">{{ c.unique_id }}</a>
+            </td>
+            <td>{{ c.date_of_complaint|date:"d-M-Y H:i" }}</td>
+            <td>{{ c.vin|default:"" }}</td>
+            <td>{{ c.psn|default:"" }}</td>
+            <td>{{ c.complaint_assigned_to|default:"" }}</td>
+            <td>{{ c.call_type|default:"" }}</td>
+            <td>{{ c.call_status|default:"" }}</td>
+            <td>{{ c.follow_up_level|default:"" }}</td>
+            <td>{{ latest.remark|default:""|truncatechars:30 }}</td>
+            <td>{{ latest.comment|default:""|truncatechars:30 }}</td>
+            <td>{{ latest.next_follow_up_exp_date|date:"d-M-Y H:i"|default:"" }}</td>
+            <td>
+                {% if latest.responsibility %}
+                <span class="badge badge-{{ latest.responsibility|slug_badge }}">{{ latest.responsibility }}</span>
+                {% endif %}
+            </td>
+            <td>{{ latest.updated_at|date:"d-M-Y H:i" }}</td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr><td colspan="13">No calls found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<div class="pagination">
+    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&{{ filter_qs }}">Prev</a>{% endif %}
+    <span class="current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&{{ filter_qs }}">Next</a>{% endif %}
+</div>
+
+<div class="chart-row">
+    <div class="chart-box"><h4>Calls by Status</h4><canvas id="crsc-status-bar-chart"></canvas></div>
+    <div class="chart-box"><h4>Engineer-wise Calls</h4><canvas id="crsc-engineer-pie-chart"></canvas></div>
+</div>

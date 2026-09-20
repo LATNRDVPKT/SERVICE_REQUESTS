@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load crsc_extras %}
+{% block title %}CRSC Part-B — {{ call.unique_id }}{% endblock %}
+
+{% block content %}
+<div class="page-title">
+    <a class="eye-icon" title="View history" data-history-url="{% url 'crsc_call_history_partial' call.id %}">&#128065;</a>
+    Part-B — {{ call.unique_id }}
+</div>
+
+<div class="card readonly-summary">
+    <div class="form-grid readonly-grid">
+        <div class="ro-field"><label>Unique ID</label><div>{{ call.unique_id }}</div></div>
+        <div class="ro-field"><label>VIN</label><div>{{ call.vin }}</div></div>
+        <div class="ro-field"><label>PSN</label><div>{{ call.psn }}</div></div>
+        <div class="ro-field"><label>Call Type</label><div>{{ call.call_type }}</div></div>
+        <div class="ro-field"><label>Engineer Responsible</label><div>{{ call.complaint_assigned_to }}</div></div>
+        <div class="ro-field"><label>Complaint Raised By</label><div>{{ call.complaint_raised_by|default:"-" }}</div></div>
+        <div class="ro-field"><label>Submitted To</label><div>{{ call.submitted_to_email|default:"-" }}</div></div>
+        <div class="ro-field"><label>iAlert Ticket No</label><div>{{ call.ialert_ticket_no|default:"-" }}</div></div>
+        <div class="ro-field"><label>Customer Voice</label><div>{{ call.customer_raised_issue|default:"-"|truncatechars:60 }}</div></div>
+    </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" id="crsc-part-b-form"
+      data-lock-field="follow_up_remark"
+      data-lock-message="Once a follow-up remark is submitted, it will be locked and cannot be edited again. Continue?">
+    {% csrf_token %}
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"follow_up_remark,follow_up_comment,follow_up_engineer,al_updated_contact_no" %}
+                    {% include "crsc_calls/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"end_customer_mail_id,veh_reg_no,region,vehicle_type,vehicle_running_location,state,device_model,telco_status,active_profile,veh_model,engine_type" %}
+                    {% include "crsc_calls/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"activation_start_date,activation_end_date,vehicle_sale_date,first_communication_in_darby,last_communication_in_darby,S_trigger_date,s_trigger_completion_date,C_trigger_date,vehicle_run_kilometers,kilometers_hours,main_battery_voltage" %}
+                    {% include "crsc_calls/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"call_status,date_of_closure,contact_person_name,contact_person_number,contact_category,exist_software,updated_software,issue_identified,issue_analysis,issue_category,dealer_name,al_mfg_plant,call_closure_category,nrd_category,card_status" %}
+                    {% include "crsc_calls/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"Latency_7_days,V_packet_7_days,Latency_3_months,V_packet_3_months,final_analysis,finalised_issue_category,upload_file_01,engineer_recommendation,hod_comment,chargable_or_not,payment_status,remarks" %}
+                    {% include "crsc_calls/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-subtitle">Required when Call Status is "FIR - For approval".</div>
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"external_modification,device_IMEI,device_ICCID,device_to_be_sent,dealer_address" %}
+                    {% include "crsc_calls/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="btn-row">
+        <button type="submit" class="btn">Save Call</button>
+        <a href="{% url 'crsc_real_time_page' %}" class="btn secondary">Back to Dashboard</a>
+    </div>
+</form>
+{% endblock %}

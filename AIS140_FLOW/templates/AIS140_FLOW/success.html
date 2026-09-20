@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="text-align:center; padding:40px;">
+    <h2 style="border:none;">Success</h2>
+    <p>Your request was processed successfully.</p>
+    <a class="btn" href="{% url 'real_time_page' %}">Go to Dashboard</a>
+</div>
+{% endblock %}

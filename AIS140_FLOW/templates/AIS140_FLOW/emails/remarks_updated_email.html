@@ -1,0 +1,9 @@
+<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1f242e;">
+    <p>Hello,</p>
+    <p>Ashok Leyland has updated remarks on ticket <strong>{{ ticket.unique_id }}</strong>.</p>
+    <table cellpadding="6" style="border-collapse: collapse;">
+        <tr><td><strong>AL Remarks</strong></td><td>{{ ticket.AL_remarks|default:"-" }}</td></tr>
+        <tr><td><strong>AL Comments</strong></td><td>{{ ticket.AL_comments|default:"-" }}</td></tr>
+    </table>
+    <p style="color:#5a6472; font-size:12px;">This is an automated notification from the AIS140 workflow system.</p>
+</div>

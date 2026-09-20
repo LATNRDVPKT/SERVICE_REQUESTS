@@ -1,0 +1,12 @@
+<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1f242e;">
+    <p>Hello,</p>
+    <p>A new AIS140 ticket has been assigned to you.</p>
+    <table cellpadding="6" style="border-collapse: collapse;">
+        <tr><td><strong>Unique ID</strong></td><td>{{ ticket.unique_id }}</td></tr>
+        <tr><td><strong>Customer</strong></td><td>{{ ticket.customer_name }}</td></tr>
+        <tr><td><strong>VIN</strong></td><td>{{ ticket.vin_no }}</td></tr>
+        <tr><td><strong>Request Type</strong></td><td>{{ ticket.request_type }}</td></tr>
+    </table>
+    <p><a href="{{ part_b_url }}">Open this ticket in Part-B</a></p>
+    <p style="color:#5a6472; font-size:12px;">This is an automated notification from the AIS140 workflow system.</p>
+</div>

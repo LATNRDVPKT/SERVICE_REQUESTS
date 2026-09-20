@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Billing — Real-Time Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-title">Billing — Real-Time Dashboard</div>
+
+<form method="get" class="toolbar" data-live-filter data-live-target="#billing-results"
+      action="{% url 'billing_real_time_page' %}">
+    <input class="form-control" type="text" name="invoice_no" placeholder="Invoice No" value="{{ invoice_no }}">
+    <select class="form-control" name="customer_name">
+        <option value="">All Customers</option>
+        {% for c in distinct_customers %}{% if c %}<option value="{{ c }}" {% if c == customer_name %}selected{% endif %}>{{ c }}</option>{% endif %}{% endfor %}
+    </select>
+    <select class="form-control" name="location">
+        <option value="">All Locations</option>
+        {% for l in distinct_locations %}{% if l %}<option value="{{ l }}" {% if l == location %}selected{% endif %}>{{ l }}</option>{% endif %}{% endfor %}
+    </select>
+    <select class="form-control" name="payment_status">
+        <option value="">All Payment Statuses</option>
+        <option value="Pending" {% if payment_status == "Pending" %}selected{% endif %}>Pending</option>
+        <option value="Received" {% if payment_status == "Received" %}selected{% endif %}>Received</option>
+    </select>
+    <span class="toolbar-label">Invoice Date</span>
+    <input class="form-control" type="date" name="from_date" value="{{ from_date }}">
+    <input class="form-control" type="date" name="to_date" value="{{ to_date }}">
+    <span class="toolbar-label">Due Date</span>
+    <input class="form-control" type="date" name="due_date_from" value="{{ due_date_from }}">
+    <input class="form-control" type="date" name="due_date_to" value="{{ due_date_to }}">
+
+    <div class="spacer"></div>
+    <a class="btn secondary" href="{% url 'billing_add' %}">+ New Invoice</a>
+    <a class="btn secondary" href="{% url 'billing_download_csv' %}">Export CSV</a>
+</form>
+
+<div id="billing-results">
+    {% include "billing/partials/results.html" %}
+</div>
+{% endblock %}

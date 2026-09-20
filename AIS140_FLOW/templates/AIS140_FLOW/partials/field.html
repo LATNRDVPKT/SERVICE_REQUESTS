@@ -1,0 +1,13 @@
+{% load static %}
+<div class="field {% if field.errors %}has-error{% endif %}">
+    <label for="{{ field.id_for_label }}">
+        {{ field.label }}{% if field.field.required %}<span class="required-star">*</span>{% endif %}
+        {% if field.name == "request_remarks" or field.name == "request_comments" or field.name == "attending_engineer" %}
+            {% if field.field.disabled %}<span class="locked-badge">Locked</span>{% endif %}
+        {% endif %}
+    </label>
+    {{ field }}
+    {% for error in field.errors %}
+        <div class="field-error">{{ error }}</div>
+    {% endfor %}
+</div>

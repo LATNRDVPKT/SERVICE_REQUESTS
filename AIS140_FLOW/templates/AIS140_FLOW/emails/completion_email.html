@@ -1,0 +1,12 @@
+<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1f242e;">
+    <p>Hello,</p>
+    <p>Ticket <strong>{{ ticket.unique_id }}</strong> has reached a completion status of
+       <strong>{{ ticket.completion_status }}</strong>.</p>
+    <table cellpadding="6" style="border-collapse: collapse;">
+        <tr><td><strong>Customer</strong></td><td>{{ ticket.customer_name }}</td></tr>
+        <tr><td><strong>VIN</strong></td><td>{{ ticket.vin_no }}</td></tr>
+        <tr><td><strong>Completion Date</strong></td><td>{{ ticket.completion_date }}</td></tr>
+    </table>
+    <p>Relevant certificates are attached where available.</p>
+    <p style="color:#5a6472; font-size:12px;">This is an automated notification from the AIS140 workflow system.</p>
+</div>

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load ais140_extras %}
+{% block title %}Real-Time Dashboard{% endblock %}
+
+{% block extra_head %}
+{% load static %}<script src="{% static 'vendor/chart.umd.min.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-title">Real-Time Dashboard</div>
+
+<form method="get" class="toolbar" data-live-filter data-live-target="#dashboard-results"
+      action="{% url 'real_time_page' %}">
+    <input class="form-control" type="text" name="q" placeholder="Search Unique ID or VIN" value="{{ search }}">
+    <select class="form-control" name="state">
+        <option value="">All States</option>
+        {% for s in distinct_states %}
+            {% if s %}<option value="{{ s }}" {% if s == state %}selected{% endif %}>{{ s }}</option>{% endif %}
+        {% endfor %}
+    </select>
+    <select class="form-control" name="completion_status">
+        <option value="">All Statuses</option>
+        <option value="Pending" {% if completion_status == "Pending" %}selected{% endif %}>Pending</option>
+        <option value="Temporary" {% if completion_status == "Temporary" %}selected{% endif %}>Temporary</option>
+        <option value="Permanent" {% if completion_status == "Permanent" %}selected{% endif %}>Permanent</option>
+        <option value="Temp + Perm" {% if completion_status == "Temp + Perm" %}selected{% endif %}>Temp + Perm</option>
+        <option value="Cancelled" {% if completion_status == "Cancelled" %}selected{% endif %}>Cancelled</option>
+        <option value="Reject" {% if completion_status == "Reject" %}selected{% endif %}>Reject</option>
+    </select>
+
+    <span class="toolbar-label">Request Date</span>
+    <input class="form-control" type="date" name="request_date_from" value="{{ request_date_from }}" title="Request date from">
+    <input class="form-control" type="date" name="request_date_to" value="{{ request_date_to }}" title="Request date to">
+
+    <span class="toolbar-label">Completion Date</span>
+    <input class="form-control" type="date" name="completion_date_from" value="{{ completion_date_from }}" title="Completion date from">
+    <input class="form-control" type="date" name="completion_date_to" value="{{ completion_date_to }}" title="Completion date to">
+
+    <div class="spacer"></div>
+    <a class="btn secondary" href="{% url 'export_page' %}?{{ filter_qs }}">Export CSV</a>
+</form>
+
+<div id="dashboard-results">
+    {% include "AIS140_FLOW/partials/dashboard_results.html" %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+window._ais140Charts = { bar: null, pie: null };
+
+function renderAis140Charts() {
+    const holder = document.getElementById("chart-data-holder");
+    if (!holder || typeof Chart === "undefined") return;
+    let stats;
+    try { stats = JSON.parse(holder.dataset.stats); } catch (e) { return; }
+
+    if (window._ais140Charts.bar) window._ais140Charts.bar.destroy();
+    if (window._ais140Charts.pie) window._ais140Charts.pie.destroy();
+
+    const barCtx = document.getElementById("state-bar-chart");
+    if (barCtx) {
+        window._ais140Charts.bar = new Chart(barCtx, {
+            type: "bar",
+            data: {
+                labels: stats.state_bar.labels,
+                datasets: [
+                    { label: "Received", data: stats.state_bar.received, backgroundColor: "#1b2a4a" },
+                    { label: "Completed", data: stats.state_bar.completed, backgroundColor: "#2f6f4f" },
+                ],
+            },
+            options: { responsive: true, plugins: { legend: { position: "bottom" } } },
+        });
+    }
+
+    const pieCtx = document.getElementById("engineer-pie-chart");
+    if (pieCtx) {
+        window._ais140Charts.pie = new Chart(pieCtx, {
+            type: "pie",
+            data: {
+                labels: stats.engineer_pie.labels,
+                datasets: [{
+                    data: stats.engineer_pie.values,
+                    backgroundColor: ["#2f6f4f", "#1b2a4a", "#8a5a1f", "#a13a2d", "#5a2d8a", "#1b4a8a", "#3a8a6a", "#c98a2f"],
+                }],
+            },
+            options: { responsive: true, plugins: { legend: { position: "bottom" } } },
+        });
+    }
+}
+
+document.addEventListener("DOMContentLoaded", renderAis140Charts);
+document.getElementById("dashboard-results").addEventListener("live-filter-updated", renderAis140Charts);
+</script>
+{% endblock %}

@@ -1,0 +1,12 @@
+<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1f242e;">
+    <p>Hello,</p>
+    <p>A new CRSC call has been assigned to you.</p>
+    <table cellpadding="6" style="border-collapse: collapse;">
+        <tr><td><strong>Unique ID</strong></td><td>{{ call.unique_id }}</td></tr>
+        <tr><td><strong>VIN</strong></td><td>{{ call.vin }}</td></tr>
+        <tr><td><strong>Customer Voice</strong></td><td>{{ call.customer_raised_issue }}</td></tr>
+        <tr><td><strong>Call Type</strong></td><td>{{ call.call_type }}</td></tr>
+    </table>
+    <p><a href="{{ part_b_url }}">Open this call in Part-B</a></p>
+    <p style="color:#5a6472; font-size:12px;">This is an automated notification from the CRSC Calls system.</p>
+</div>
