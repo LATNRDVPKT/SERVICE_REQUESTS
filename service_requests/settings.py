@@ -57,6 +57,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",   # serves /static/ without Nginx
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -161,3 +162,8 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "verbose"}},
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
 }
+
+# ---------------------------------------------------------------------------
+# Static files — WhiteNoise (serves /static/ via Gunicorn, no Nginx needed)
+# ---------------------------------------------------------------------------
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
