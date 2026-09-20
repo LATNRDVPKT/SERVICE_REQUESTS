@@ -167,3 +167,4 @@ LOGGING = {
 # Static files — WhiteNoise (serves /static/ via Gunicorn, no Nginx needed)
 # ---------------------------------------------------------------------------
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+WHITENOISE_MANIFEST_STRICT = False
