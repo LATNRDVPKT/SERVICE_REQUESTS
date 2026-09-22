@@ -9,5 +9,6 @@ urlpatterns = [
     path("real_time_page/", views.real_time_page, name="crsc_real_time_page"),
     path("real_time_page/<int:call_id>/history/", views.call_history_partial, name="crsc_call_history_partial"),
 
+    path("export/", views.export_page, name="crsc_export_page"),
     path("download-csv/", views.download_csv, name="crsc_download_csv"),
 ]

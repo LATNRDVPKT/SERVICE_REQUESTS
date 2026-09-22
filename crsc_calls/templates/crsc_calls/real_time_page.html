@@ -11,9 +11,9 @@
 
 <form method="get" class="toolbar" data-live-filter data-live-target="#crsc-dashboard-results"
       action="{% url 'crsc_real_time_page' %}">
-    <input class="form-control" type="text" name="unique_id" placeholder="Unique ID" value="{{ unique_id }}">
-    <input class="form-control" type="text" name="vin" placeholder="VIN (5+ chars)" data-min-chars="5" value="{{ vin }}">
-    <input class="form-control" type="text" name="psn" placeholder="PSN (5+ chars)" data-min-chars="5" value="{{ psn }}">
+    <textarea class="form-control searchbox" name="q" rows="1"
+              title="Search Unique ID, VIN or PSN — paste multiple values (one per line, or comma/space separated) to bulk-search"
+              placeholder="Search Unique ID, VIN or PSN — paste a list to bulk-search">{{ search }}</textarea>
     <input class="form-control" type="text" name="ialert_ticket_no" placeholder="iAlert Ticket No" value="{{ ialert_ticket_no }}">
     <select class="form-control" name="call_status">
         <option value="">All Statuses</option>
@@ -32,16 +32,22 @@
             <option value="{{ name }}" {% if name == engineer %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
     </select>
+    <select class="form-control" name="responsibility">
+        <option value="">All Responsibility</option>
+        {% for value, label in responsibility_choices %}
+            <option value="{{ value }}" {% if value == responsibility %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
 
     <span class="toolbar-label">Complaint Date</span>
-    <input class="form-control" type="date" name="complaint_date_from" value="{{ complaint_date_from }}">
-    <input class="form-control" type="date" name="complaint_date_to" value="{{ complaint_date_to }}">
+    <input class="form-control" type="datetime-local" name="complaint_date_from" value="{{ complaint_date_from }}">
+    <input class="form-control" type="datetime-local" name="complaint_date_to" value="{{ complaint_date_to }}">
     <span class="toolbar-label">Closure Date</span>
-    <input class="form-control" type="date" name="closure_date_from" value="{{ closure_date_from }}">
-    <input class="form-control" type="date" name="closure_date_to" value="{{ closure_date_to }}">
+    <input class="form-control" type="datetime-local" name="closure_date_from" value="{{ closure_date_from }}">
+    <input class="form-control" type="datetime-local" name="closure_date_to" value="{{ closure_date_to }}">
 
     <div class="spacer"></div>
-    <a class="btn secondary" href="{% url 'crsc_download_csv' %}?{{ filter_qs }}">Export CSV</a>
+    <button type="submit" formaction="{% url 'crsc_export_page' %}" formnovalidate class="btn secondary">Export CSV</button>
 </form>
 
 <div id="crsc-dashboard-results">
@@ -51,7 +57,35 @@
 
 {% block extra_scripts %}
 <script>
-window._crscCharts = { bar: null, pie: null };
+window._crscCharts = { ialertBar: null, directBar: null };
+
+// Draws each bar/slice's value directly on the chart (no external plugin —
+// vendored locally like chart.umd.min.js, so this stays offline-friendly).
+const crscDataLabelsPlugin = {
+    id: "crscDataLabels",
+    afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        chart.data.datasets.forEach((dataset, dsIndex) => {
+            const meta = chart.getDatasetMeta(dsIndex);
+            if (meta.hidden) return;
+            meta.data.forEach((element, index) => {
+                const value = dataset.data[index];
+                if (value === undefined || value === null || value === 0) return;
+                const pos = element.tooltipPosition();
+                ctx.save();
+                ctx.font = "bold 11px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = "rgba(0, 0, 0, 0.55)";
+                ctx.strokeText(value, pos.x, pos.y - 4);
+                ctx.fillStyle = "#fff";
+                ctx.fillText(value, pos.x, pos.y - 4);
+                ctx.restore();
+            });
+        });
+    },
+};
 
 function renderCrscCharts() {
     const holder = document.getElementById("crsc-chart-data-holder");
@@ -59,24 +93,25 @@ function renderCrscCharts() {
     let stats;
     try { stats = JSON.parse(holder.dataset.stats); } catch (e) { return; }
 
-    if (window._crscCharts.bar) window._crscCharts.bar.destroy();
-    if (window._crscCharts.pie) window._crscCharts.pie.destroy();
+    if (window._crscCharts.ialertBar) window._crscCharts.ialertBar.destroy();
+    if (window._crscCharts.directBar) window._crscCharts.directBar.destroy();
 
-    const barCtx = document.getElementById("crsc-status-bar-chart");
-    if (barCtx) {
-        window._crscCharts.bar = new Chart(barCtx, {
+    const ialertCtx = document.getElementById("crsc-ialert-status-chart");
+    if (ialertCtx) {
+        window._crscCharts.ialertBar = new Chart(ialertCtx, {
             type: "bar",
-            data: { labels: stats.status_bar.labels, datasets: [{ label: "Calls", data: stats.status_bar.values, backgroundColor: "#1b2a4a" }] },
-            options: { responsive: true, plugins: { legend: { display: false } } },
+            data: { labels: stats.ialert_status.labels, datasets: [{ label: "Calls", data: stats.ialert_status.values, backgroundColor: "#1b2a4a" }] },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+            plugins: [crscDataLabelsPlugin],
         });
     }
-    const pieCtx = document.getElementById("crsc-engineer-pie-chart");
-    if (pieCtx) {
-        window._crscCharts.pie = new Chart(pieCtx, {
-            type: "pie",
-            data: { labels: stats.engineer_pie.labels, datasets: [{ data: stats.engineer_pie.values,
-                backgroundColor: ["#2f6f4f", "#1b2a4a", "#8a5a1f", "#a13a2d", "#5a2d8a", "#1b4a8a", "#3a8a6a", "#c98a2f"] }] },
-            options: { responsive: true, plugins: { legend: { position: "bottom" } } },
+    const directCtx = document.getElementById("crsc-direct-status-chart");
+    if (directCtx) {
+        window._crscCharts.directBar = new Chart(directCtx, {
+            type: "bar",
+            data: { labels: stats.direct_status.labels, datasets: [{ label: "Calls", data: stats.direct_status.values, backgroundColor: "#2f6f4f" }] },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+            plugins: [crscDataLabelsPlugin],
         });
     }
 }

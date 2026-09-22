@@ -1,0 +1,12 @@
+<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1f242e;">
+    <p>Hello,</p>
+    <p>Call <strong>{{ call.unique_id }}</strong> has reached status <strong>{{ call.call_status }}</strong>.
+       The FIR summary is attached as a PDF.</p>
+    <table cellpadding="6" style="border-collapse: collapse;">
+        <tr><td><strong>VIN</strong></td><td>{{ call.vin }}</td></tr>
+        <tr><td><strong>Engineer Recommendation</strong></td><td>{{ call.engineer_recommendation }}</td></tr>
+        <tr><td><strong>Device to be Sent</strong></td><td>{{ call.device_to_be_sent }}</td></tr>
+        <tr><td><strong>Dealer Address</strong></td><td>{{ call.dealer_address }}</td></tr>
+    </table>
+    <p style="color:#5a6472; font-size:12px;">This is an automated notification from the CRSC Calls system.</p>
+</div>

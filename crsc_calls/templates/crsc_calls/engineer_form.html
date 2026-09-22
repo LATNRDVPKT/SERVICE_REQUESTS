@@ -6,6 +6,9 @@
 <div class="page-title">
     <a class="eye-icon" title="View history" data-history-url="{% url 'crsc_call_history_partial' call.id %}">&#128065;</a>
     Part-B — {{ call.unique_id }}
+    {% if form.locked_for_role %}
+        <span class="page-title-hint">This call is "{{ call.call_status }}" — read-only for engineer access. Only an admin can edit it further.</span>
+    {% endif %}
 </div>
 
 <div class="card readonly-summary">
@@ -17,6 +20,7 @@
         <div class="ro-field"><label>Engineer Responsible</label><div>{{ call.complaint_assigned_to }}</div></div>
         <div class="ro-field"><label>Complaint Raised By</label><div>{{ call.complaint_raised_by|default:"-" }}</div></div>
         <div class="ro-field"><label>Submitted To</label><div>{{ call.submitted_to_email|default:"-" }}</div></div>
+        <div class="ro-field"><label>Follow-Up Engineer</label><div>{{ call.follow_up_engineer|default:"-" }}</div></div>
         <div class="ro-field"><label>iAlert Ticket No</label><div>{{ call.ialert_ticket_no|default:"-" }}</div></div>
         <div class="ro-field"><label>Customer Voice</label><div>{{ call.customer_raised_issue|default:"-"|truncatechars:60 }}</div></div>
     </div>
@@ -30,7 +34,7 @@
     <div class="card">
         <div class="form-grid">
             {% for field in form %}
-                {% if field.name|in_list:"follow_up_remark,follow_up_comment,follow_up_engineer,al_updated_contact_no" %}
+                {% if field.name|in_list:"follow_up_remark,follow_up_comment,call_status,al_updated_contact_no" %}
                     {% include "crsc_calls/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
@@ -60,7 +64,7 @@
     <div class="card">
         <div class="form-grid">
             {% for field in form %}
-                {% if field.name|in_list:"call_status,date_of_closure,contact_person_name,contact_person_number,contact_category,exist_software,updated_software,issue_identified,issue_analysis,issue_category,dealer_name,al_mfg_plant,call_closure_category,nrd_category,card_status" %}
+                {% if field.name|in_list:"date_of_closure,contact_person_name,contact_person_number,contact_category,exist_software,updated_software,issue_identified,issue_description,issue_analysis,issue_category,dealer_name,al_mfg_plant,call_closure_category,nrd_category,card_status" %}
                     {% include "crsc_calls/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
@@ -77,8 +81,8 @@
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-subtitle">Required when Call Status is "FIR - For approval".</div>
+    <div class="card" id="fir-fields-card" {% if call.call_status != "FIR - For approval" %}hidden{% endif %}>
+        <div class="card-subtitle">Shown and required when Call Status is "FIR - For approval".</div>
         <div class="form-grid">
             {% for field in form %}
                 {% if field.name|in_list:"external_modification,device_IMEI,device_ICCID,device_to_be_sent,dealer_address" %}
@@ -89,8 +93,23 @@
     </div>
 
     <div class="btn-row">
-        <button type="submit" class="btn">Save Call</button>
+        {% if not form.locked_for_role %}<button type="submit" class="btn">Save Call</button>{% endif %}
         <a href="{% url 'crsc_real_time_page' %}" class="btn secondary">Back to Dashboard</a>
     </div>
 </form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    var statusField = document.getElementById("id_call_status");
+    var firCard = document.getElementById("fir-fields-card");
+    if (!statusField || !firCard) return;
+    function toggle() {
+        firCard.hidden = statusField.value !== "FIR - For approval";
+    }
+    statusField.addEventListener("change", toggle);
+    toggle();
+})();
+</script>
 {% endblock %}

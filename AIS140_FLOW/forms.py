@@ -2,10 +2,12 @@
 # AIS140_FLOW — forms.py
 # =============================================================================
 import json
+from types import SimpleNamespace
 
 from django import forms
 from .models import AIS140Request
 from .constants import REQUEST_REMARK_CHOICES, REMARK_COMMENT_MAP
+from .services.workflow import determine_update_to_al_api
 
 # Part-A mandatory fields (REQ-01)
 PART_A_MANDATORY_FIELDS = [
@@ -26,12 +28,9 @@ PART_A_MANDATORY_LABELS = {
     "customer_phone": "Customer Phone",
 }
 
-# Fields locked once a request remark has been submitted (REQ-03)
-REQUEST_LOCKED_FIELDS = ["request_remarks", "request_comments", "attending_engineer"]
-
 DATE_TIME_FIELDS = {
     "date_of_request", "Customer_assigned_date", "AL_assigned_date", "reupdated_request_al",
-    "temp_cert_date", "permanent_cert_date", "completion_date",
+    "permanent_cert_date",
     "vahan_date",
 }
 DATE_FIELDS = {"certification_start_date", "certification_end_date", "rto_approval_date"}
@@ -92,8 +91,8 @@ class ManagerForm(forms.ModelForm):
             "requested_phone_number": forms.TextInput(attrs={"placeholder": "Enter Phone Number"}),
             "assigned_engineer_email": forms.TextInput(attrs={"placeholder": "Enter Assigned Engineer Email"}),
             "request_type": forms.TextInput(attrs={"placeholder": "Enter Request Type"}),
-            "vin_no": forms.TextInput(attrs={"placeholder": "Enter VIN / Chassis No"}),
-            "psn": forms.TextInput(attrs={"placeholder": "Enter PSN No"}),
+            "vin_no": forms.TextInput(attrs={"placeholder": "Enter VIN / Chassis No", "maxlength": "17"}),
+            "psn": forms.TextInput(attrs={"placeholder": "Enter PSN No", "maxlength": "10", "inputmode": "numeric"}),
             "customer_name": forms.TextInput(attrs={"placeholder": "Enter Customer Name"}),
             "customer_phone": forms.TextInput(attrs={"placeholder": "Enter Customer Phone"}),
         }
@@ -103,6 +102,13 @@ class ManagerForm(forms.ModelForm):
         for name in PART_A_MANDATORY_FIELDS:
             if name in self.fields:
                 self.fields[name].required = True
+        # vin_no's DB column is intentionally wider than 17 (legacy rows up
+        # to 18 chars — see models.py), so Django auto-derives maxlength="50"
+        # from the model field and clobbers our widget attrs.setdefault above.
+        # Force it back to 17 for new data entry; the vin_validator still
+        # enforces the exact format server-side regardless.
+        if "vin_no" in self.fields:
+            self.fields["vin_no"].widget.attrs["maxlength"] = "17"
         _apply_uniform_widget_style(self)
 
 
@@ -115,26 +121,32 @@ class PartBForm(forms.ModelForm):
     certificates, and close tickets.
 
     Validation behaviour:
-      - REQ-12: Update_to_AL_API and completion_status are always required.
-      - REQ-03: once request_remarks is already saved (non-blank) on the
-        ticket, incoming changes to request_remarks / request_comments /
-        attending_engineer are rejected here as a backend safety net (the
-        view also enforces this before the form is even bound).
-      - For API tickets (request_id present), the matching certificate
-        file or the request remark/comments is required depending on
-        Update_to_AL_API.
+      - REQ-12: completion_status is always required.
+      - Request Remarks / Request Comments never lock — engineers can
+        update them on every save. The ticket only becomes fully
+        read-only once completion_status reaches a terminal state
+        (enforced at the view/template level, not here).
+      - Attending Engineer is not a form field — the view stamps it from
+        the logged-in user on every save (see views.part_b_form), so the
+        audit trail always reflects who was actually authenticated.
+      - For AL-API tickets (request_id present and ticket_through is
+        "A.L API"), Update_to_AL_API must resolve to a non-blank value —
+        i.e. the engineer must supply a Request Remark or a certificate.
+      - For API tickets, the matching certificate file or the request
+        remark/comments is additionally required depending on the
+        resolved Update_to_AL_API value.
     """
 
     class Meta:
         model = AIS140Request
         fields = [
             "device_model", "icicid_no", "imei_no", "additional_email_id",
-            "attending_engineer", "request_remarks", "request_comments",
-            "temp_cert_reqd", "temp_cert_date", "temp_raised_by",
+            "request_remarks", "request_comments",
+            "temp_cert_reqd", "temp_raised_by",
             "upload_certificate_in_ialert",
             "upload_certificate_in_ialert_01",
             "upload_certificate_in_ialert_02",
-            "Update_to_AL_API", "completion_status", "completion_date",
+            "Update_to_AL_API", "completion_status",
             "certification_start_date", "certification_end_date",
             "rto_approval_date", "veh_run_kms", "total_run_kms",
             "vahan_date", "vahan_uploaded_by",
@@ -142,8 +154,7 @@ class PartBForm(forms.ModelForm):
         widgets = {
             "device_model": forms.TextInput(attrs={"placeholder": "Device Model"}),
             "icicid_no": forms.TextInput(attrs={"placeholder": "Enter ICCID No", "maxlength": "20"}),
-            "imei_no": forms.TextInput(attrs={"placeholder": "Enter IMEI No", "maxlength": "17"}),
-            "attending_engineer": forms.TextInput(attrs={"placeholder": "Enter Attending Engineer Email"}),
+            "imei_no": forms.TextInput(attrs={"placeholder": "Enter IMEI No", "maxlength": "15"}),
             "request_remarks": forms.Select(
                 choices=REQUEST_REMARK_CHOICES,
                 attrs={
@@ -151,7 +162,7 @@ class PartBForm(forms.ModelForm):
                     "data-autofill-map": json.dumps(REMARK_COMMENT_MAP),
                 },
             ),
-            "request_comments": forms.TextInput(attrs={"placeholder": "Enter Request Comments"}),
+            "request_comments": forms.Textarea(attrs={"placeholder": "Enter Request Comments", "rows": 2}),
             "veh_run_kms": forms.TextInput(attrs={"placeholder": "Enter Vehicle Run in Kms"}),
             "total_run_kms": forms.TextInput(attrs={"placeholder": "Enter Vehicle Total Run in Kms"}),
             "vahan_uploaded_by": forms.TextInput(attrs={"placeholder": "Enter Name"}),
@@ -160,12 +171,6 @@ class PartBForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # REQ-03 — once request_remarks is already saved, render the trio
-        # as disabled in the UI.
-        if self.instance and self.instance.pk and (self.instance.request_remarks or "").strip():
-            for name in ("request_remarks", "request_comments", "attending_engineer"):
-                if name in self.fields:
-                    self.fields[name].disabled = True
         # Update_to_AL_API is auto-derived (REQ-04) — never hand-edited.
         if "Update_to_AL_API" in self.fields:
             self.fields["Update_to_AL_API"].disabled = True
@@ -175,23 +180,9 @@ class PartBForm(forms.ModelForm):
         cleaned = super().clean()
         instance = self.instance
 
-        # REQ-03 — backend lock: reject any change once request_remarks is set
-        if instance and instance.pk and (instance.request_remarks or "").strip():
-            cleaned["request_remarks"] = instance.request_remarks
-            cleaned["request_comments"] = instance.request_comments
-            cleaned["attending_engineer"] = instance.attending_engineer
-
         # REQ-12 — always mandatory
         if not (cleaned.get("completion_status") or "").strip():
             self.add_error("completion_status", "Completion Status is required.")
-
-        # Existing API-ticket validations
-        request_id = getattr(instance, "request_id", None)
-        if not request_id or not str(request_id).strip():
-            return cleaned  # manual ticket — no further API validation
-
-        api_value = (getattr(instance, "_pending_update_to_al_api", None)
-                     or cleaned.get("Update_to_AL_API") or "").strip()
 
         def filled(key):
             v = cleaned.get(key)
@@ -199,6 +190,38 @@ class PartBForm(forms.ModelForm):
 
         def has_file(field):
             return bool(self.files.get(field) or getattr(self.instance, field, None))
+
+        # Whenever Temporary Certificate Required is Yes, the Temporary
+        # Certificate file is mandatory — regardless of ticket type.
+        if cleaned.get("temp_cert_reqd") == "Yes" and not has_file("upload_certificate_in_ialert"):
+            self.add_error(
+                "upload_certificate_in_ialert",
+                "Upload Certificate in iAlert (Temporary) is required when Temporary Certificate Required is Yes.",
+            )
+
+        # Existing API-ticket validations
+        request_id = getattr(instance, "request_id", None)
+        ticket_through = (getattr(instance, "ticket_through", "") or "").strip().lower()
+        is_al_api_ticket = bool(request_id and str(request_id).strip()) and ticket_through in ("a.l api", "al api")
+        if not request_id or not str(request_id).strip():
+            return cleaned  # manual ticket — no further API validation
+
+        prospective = SimpleNamespace(
+            upload_certificate_in_ialert=self.files.get("upload_certificate_in_ialert")
+                or getattr(instance, "upload_certificate_in_ialert", None),
+            upload_certificate_in_ialert_01=self.files.get("upload_certificate_in_ialert_01")
+                or getattr(instance, "upload_certificate_in_ialert_01", None),
+            request_remarks=cleaned.get("request_remarks"),
+        )
+        api_value = determine_update_to_al_api(prospective)
+
+        # Update to AL API is mandatory for AL-API tickets — unless the AL
+        # Request ID is blank or Ticket Through isn't AL API (checked above).
+        if is_al_api_ticket and not api_value:
+            self.add_error(
+                "request_remarks",
+                "Update to AL API is required — add a Request Remark or upload a certificate.",
+            )
 
         if api_value == "Request":
             if not filled("request_remarks"):

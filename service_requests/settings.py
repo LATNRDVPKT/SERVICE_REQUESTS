@@ -155,12 +155,58 @@ DARBY_SEARCH_URL = env("DARBY_SEARCH_URL", "https://api.al.drivewithdarby.com/v1
 DARBY_BEARER_TOKEN = env("DARBY_BEARER_TOKEN", "")
 DARBY_REQUEST_TIMEOUT = int(env("DARBY_REQUEST_TIMEOUT", "10"))
 
+LOGS_DIR = BASE_DIR / "logs"
+LOGS_DIR.mkdir(exist_ok=True)
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "formatters": {"verbose": {"format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s"}},
-    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "verbose"}},
-    "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
+    "formatters": {
+        "verbose": {"format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "verbose"},
+        # General app log — everything INFO and above, from any logger.
+        "app_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOGS_DIR / "app.log"),
+            "maxBytes": 10 * 1024 * 1024,
+            "backupCount": 5,
+            "formatter": "verbose",
+            "level": "INFO",
+        },
+        # Errors only, across the whole project — the first place to look
+        # when something breaks (includes full tracebacks).
+        "error_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOGS_DIR / "errors.log"),
+            "maxBytes": 10 * 1024 * 1024,
+            "backupCount": 5,
+            "formatter": "verbose",
+            "level": "ERROR",
+        },
+        # Incoming/outgoing API traffic (AL API intake, Darby lookups,
+        # iAlert pushes) — logged by the dedicated "api_traffic" logger.
+        "api_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOGS_DIR / "api.log"),
+            "maxBytes": 10 * 1024 * 1024,
+            "backupCount": 5,
+            "formatter": "verbose",
+            "level": "INFO",
+        },
+    },
+    "root": {
+        "handlers": ["console", "app_file", "error_file"],
+        "level": env("LOG_LEVEL", "INFO"),
+    },
+    "loggers": {
+        "api_traffic": {
+            "handlers": ["console", "api_file", "error_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
 }
 
 # ---------------------------------------------------------------------------

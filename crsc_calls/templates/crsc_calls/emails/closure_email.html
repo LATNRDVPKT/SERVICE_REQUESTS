@@ -1,0 +1,12 @@
+<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1f242e;">
+    <p>Dear Customer,</p>
+    <p>Your call <strong>{{ call.unique_id }}</strong> has been updated to status <strong>{{ call.call_status }}</strong>.</p>
+    <table cellpadding="6" style="border-collapse: collapse;">
+        <tr><td><strong>Reference ID</strong></td><td>{{ call.unique_id }}</td></tr>
+        <tr><td><strong>Vehicle</strong></td><td>{{ call.vin }}</td></tr>
+        <tr><td><strong>Status</strong></td><td>{{ call.call_status }}</td></tr>
+        <tr><td><strong>Final Action Taken</strong></td><td>{{ call.final_action_taken|default:"" }}</td></tr>
+    </table>
+    <p>If you have any questions, feel free to contact us.</p>
+    <p style="color:#5a6472; font-size:12px;">This is an automated notification from the CRSC Calls system.</p>
+</div>

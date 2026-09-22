@@ -12,10 +12,23 @@ from django.conf import settings
 from django.utils.timezone import now
 
 logger = logging.getLogger(__name__)
+api_logger = logging.getLogger("api_traffic")
 
 
 class DarbyLookupError(Exception):
     """Raised on a hard failure (network/timeout/bad response) talking to Darby."""
+
+
+def _bearer_header(token):
+    """Builds the Authorization header from DARBY_BEARER_TOKEN regardless of
+    whether the configured value already includes a "Bearer " prefix (easy
+    mistake when pasting a token straight from an API console) — avoids
+    ever sending a malformed "Bearer Bearer ..." header, which Darby
+    would reject outright."""
+    token = (token or "").strip()
+    if token.lower().startswith("bearer "):
+        token = token[len("bearer "):].strip()
+    return f"Bearer {token}"
 
 
 def fetch_device_data(vin_no):
@@ -36,11 +49,12 @@ def fetch_device_data(vin_no):
         raise DarbyLookupError("Darby credentials are not configured.")
 
     headers = {
-        "Authorization": f"Bearer {settings.DARBY_BEARER_TOKEN}",
+        "Authorization": _bearer_header(settings.DARBY_BEARER_TOKEN),
         "Content-Type": "application/json",
     }
     payload = {"vin": vin_no}
 
+    api_logger.info("OUTGOING Darby lookup — vin=%s url=%s", vin_no, settings.DARBY_SEARCH_URL)
     try:
         response = requests.post(
             settings.DARBY_SEARCH_URL,
@@ -49,12 +63,20 @@ def fetch_device_data(vin_no):
             timeout=settings.DARBY_REQUEST_TIMEOUT,
         )
     except requests.RequestException as exc:
+        api_logger.error("OUTGOING Darby lookup FAILED — vin=%s: %s", vin_no, exc)
         raise DarbyLookupError(f"Darby request failed: {exc}") from exc
 
     if response.status_code == 404:
+        api_logger.info("OUTGOING Darby lookup — vin=%s not found (404)", vin_no)
         return None
     if response.status_code != 200:
+        api_logger.error(
+            "OUTGOING Darby lookup REJECTED — vin=%s status=%s body=%s",
+            vin_no, response.status_code, response.text[:300],
+        )
         raise DarbyLookupError(f"Darby returned HTTP {response.status_code}: {response.text[:300]}")
+
+    api_logger.info("OUTGOING Darby lookup OK — vin=%s status=%s", vin_no, response.status_code)
 
     try:
         data = response.json()
@@ -71,6 +93,7 @@ def fetch_device_data(vin_no):
     return {
         "iccid": record.get("iccid") or record.get("ICCID"),
         "imei": record.get("imei") or record.get("IMEI"),
+        "model": record.get("model") or record.get("device_model") or record.get("deviceModel"),
         "product_code": record.get("product_code") or record.get("productCode"),
         "architecture_type": record.get("architecture_type") or record.get("architectureType"),
         "battery_voltage": record.get("battery_voltage") or record.get("batteryVoltage"),
@@ -103,6 +126,7 @@ def run_darby_lookup_and_save(ticket):
     AIS140Request.objects.filter(pk=ticket.pk).update(
         icicid_no=result.get("iccid") or ticket.icicid_no,
         imei_no=result.get("imei") or ticket.imei_no,
+        device_model=result.get("model") or ticket.device_model,
         device_product_code=result.get("product_code") or ticket.device_product_code,
         device_architecture_type=result.get("architecture_type") or ticket.device_architecture_type,
         device_battery_voltage=result.get("battery_voltage") or ticket.device_battery_voltage,

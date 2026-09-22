@@ -70,18 +70,53 @@ REMARK_COMMENT_MAP = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Latest Remark -> Responsibility mapping. Every remark in ALL_REMARKS is
+# covered, so any call with a follow-up remark always has a responsibility.
+# ---------------------------------------------------------------------------
+RESPONSIBILITY_MAP = {
+    "CONTACT DETAILS WRONG": "AL",
+    "CUSTOMER ISSUE - DASHBOARD MODIFICATION": "CUSTOMER",
+    "CUSTOMER ISSUE - FUSE": "CUSTOMER",
+    "CUSTOMER ISSUE - PHYSICAL DAMAGE": "CUSTOMER",
+    "CUSTOMER ISSUE - THIRDPARTY DEVICE": "CUSTOMER",
+    "CUSTOMER ISSUE - VEHICLE WIRING": "CUSTOMER",
+    "CUSTOMER ISSUE - WATER INGRESS": "AL",
+    "CUSTOMER NOT ANSWERING": "AL",
+    "CUSTOMER RESCHEDULING - VEHICLE SUPPORT DATE": "CUSTOMER",
+    "DEALER SENT DEVICE FOR SERVICE": "DANLAW",
+    "DEVICE DISPATCHED TO WORKSHOP": "DANLAW",
+    "iALERT ISSUE": "AL",
+    "ISSUE RESOLVED": "CLOSED",
+    "MONITORING": "DANLAW",
+    "NO ISSUE - CUSTOMER COMPLAINT": "AL",
+    "OUT OF WARRANTY": "CUSTOMER",
+    "VEHICLE PHYSICAL SUPPORT - WAITING": "CUSTOMER",
+    "VIDEO CALL SUPPORT - WAITING": "CUSTOMER",
+    "SIM EXPIRED": "CUSTOMER",
+    "DEVICE TO BE SENT FOR REPAIR": "DANLAW",
+    "DEVICE TO BE SENT FOR REPLACE": "DANLAW",
+    "CANCELLED": "CUSTOMER",
+}
+
+RESPONSIBILITY_CHOICES = [
+    ("DANLAW", "DANLAW"),
+    ("CUSTOMER", "CUSTOMER"),
+    ("AL", "AL"),
+    ("CLOSED", "CLOSED"),
+]
+
+
 def get_responsibility(source_field, remark):
     """
-    REQ-style responsibility rule specified for CRSC Calls:
+    Responsibility rule for CRSC Calls:
       - the latest event is an AL-updated-contact-number event -> DANLAW
-      - the latest event's remark is "iALERT ISSUE"              -> AL
-      - anything else                                            -> FOLLOW-UP
+      - otherwise, looked up from the remark via RESPONSIBILITY_MAP
+        (case-insensitive; every selectable remark is covered)
     """
     if source_field == "al_updated_contact_no":
         return "DANLAW"
-    if (remark or "").strip().upper() == "IALERT ISSUE":
-        return "AL"
-    return "FOLLOW-UP"
+    return RESPONSIBILITY_MAP.get((remark or "").strip().upper(), "")
 
 
 def format_update_to_al(follow_up_level, remark):
@@ -100,3 +135,55 @@ CRSC_ASSIGNMENT_CC = [
 CRSC_CUSTOMER_CC = [
     # "sales@yourcompany.com",
 ]
+
+# ---------------------------------------------------------------------------
+# Complaint Assigned To -> engineer contact details. Replaces the old manual
+# "Submitted To Email" / "Complaint Assigned Contact Number" form fields —
+# the manager form now looks the assignee up here instead. Dummy placeholder
+# values until real ones are supplied.
+# ---------------------------------------------------------------------------
+ENGINEER_CONTACT_MAP = {
+    "Engineer One": {"email": "engineer1@dummy-crsc.local", "phone": "9000000001"},
+    "Engineer Two": {"email": "engineer2@dummy-crsc.local", "phone": "9000000002"},
+    "Engineer Three": {"email": "engineer3@dummy-crsc.local", "phone": "9000000003"},
+    "Engineer Four": {"email": "engineer4@dummy-crsc.local", "phone": "9000000004"},
+    "Engineer Five": {"email": "engineer5@dummy-crsc.local", "phone": "9000000005"},
+    "Engineer Six": {"email": "engineer6@dummy-crsc.local", "phone": "9000000006"},
+    "Engineer Seven": {"email": "engineer7@dummy-crsc.local", "phone": "9000000007"},
+    "Engineer Eight": {"email": "engineer8@dummy-crsc.local", "phone": "9000000008"},
+    "Engineer Nine": {"email": "engineer9@dummy-crsc.local", "phone": "9000000009"},
+    "Engineer Ten": {"email": "engineer10@dummy-crsc.local", "phone": "9000000010"},
+    "Engineer Eleven": {"email": "engineer11@dummy-crsc.local", "phone": "9000000011"},
+}
+
+
+def resolve_engineer_contact(assigned_to):
+    """Returns (email, phone) for a Complaint Assigned To value. Falls back
+    to a deterministic dummy address/number for any name not in the map
+    (e.g. a future engineer added via seed_users) so the lookup never blocks
+    saving the call."""
+    entry = ENGINEER_CONTACT_MAP.get(assigned_to)
+    if entry:
+        return entry["email"], entry["phone"]
+    if not assigned_to or assigned_to == "others":
+        return "", ""
+    slug = "".join(ch if ch.isalnum() else "." for ch in assigned_to.strip().lower()).strip(".")
+    return f"{slug}@dummy-crsc.local", "9000000000"
+
+
+# ---------------------------------------------------------------------------
+# Device to be Sent (location) -> FIR PDF recipient. REPLACE THESE with the
+# real addresses for each location — dummy placeholders until then, same
+# convention as ENGINEER_CONTACT_MAP above.
+# ---------------------------------------------------------------------------
+DEVICE_LOCATION_EMAIL_MAP = {
+    "Goa": "goa-fir@dummy-crsc.local",
+    "Hyderabad": "hyderabad-fir@dummy-crsc.local",
+    "Chennai": "chennai-fir@dummy-crsc.local",
+}
+
+
+def resolve_fir_pdf_recipient(device_to_be_sent):
+    """Returns the FIR-PDF recipient e-mail for a Device to be Sent
+    location, or "" if the location isn't set/known."""
+    return DEVICE_LOCATION_EMAIL_MAP.get(device_to_be_sent, "")

@@ -13,48 +13,14 @@
 
     <div class="card">
         <div class="form-grid">
+            {% if ticket.completion_date %}
+            <div class="field">
+                <label>Completion Date</label>
+                <input type="text" class="form-control" value="{{ ticket.completion_date|date:'d-m-Y H:i:s' }}" readonly>
+            </div>
+            {% endif %}
             {% for field in form %}
-                {% if field.name|in_list:"request_id,ticket_through,date_of_request,Customer_assigned_date,AL_assigned_date,reupdated_request_al,request_type,category,assigned_to,assigned_engineer_email,requested_by,requested_name,requested_phone_number" %}
-                    {% include "AIS140_FLOW/partials/field.html" with field=field %}
-                {% endif %}
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="form-grid">
-            {% for field in form %}
-                {% if field.name|in_list:"customer_name,customer_phone,Customer_Alternate_number,Customer_Email_ID,Cust_veh_Regn_Address" %}
-                    {% include "AIS140_FLOW/partials/field.html" with field=field %}
-                {% endif %}
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="form-grid">
-            {% for field in form %}
-                {% if field.name|in_list:"vin_no,engine,vehicle_no,vehicle_model,manufacturing_year,AIS140_Type,pan_card,aadhar_card,device_model,psn" %}
-                    {% include "AIS140_FLOW/partials/field.html" with field=field %}
-                {% endif %}
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="form-grid">
-            {% for field in form %}
-                {% if field.name|in_list:"dealer_name,dealer_code,Dealer_mail,rto_code,rto_name,state,ao_name,ro,zone" %}
-                    {% include "AIS140_FLOW/partials/field.html" with field=field %}
-                {% endif %}
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="form-grid">
-            {% for field in form %}
-                {% if field.name|in_list:"AL_remarks,AL_comments" %}
+                {% if field.name|in_list:"request_id,ticket_through,date_of_request,Customer_assigned_date,AL_assigned_date,reupdated_request_al,request_type,category,assigned_to,assigned_engineer_email,requested_by,requested_name,requested_phone_number,customer_name,customer_phone,Customer_Alternate_number,Customer_Email_ID,Cust_veh_Regn_Address,vin_no,engine,vehicle_no,vehicle_model,manufacturing_year,AIS140_Type,pan_card,aadhar_card,device_model,psn,dealer_name,dealer_code,Dealer_mail,rto_code,rto_name,state,ao_name,ro,zone,AL_remarks,AL_comments" %}
                     {% include "AIS140_FLOW/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}

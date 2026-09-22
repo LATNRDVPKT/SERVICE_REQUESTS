@@ -87,7 +87,18 @@ function wireLiveFilterForm(form) {
     form.querySelectorAll("select, input[type=date]").forEach((el) => {
         el.addEventListener("change", run);
     });
-    form.querySelectorAll("input[type=text], input[data-typeahead]").forEach((el) => {
+    // Elements associated to this form via the HTML `form="..."` attribute
+    // (e.g. a bulk-search textarea living outside the <form> markup) are
+    // included here too, since FormData(form) already picks them up.
+    const formId = form.getAttribute("id");
+    const externalFields = formId
+        ? document.querySelectorAll(`[form="${formId}"]`)
+        : [];
+    const textLikeInputs = [
+        ...form.querySelectorAll("input[type=text], input[data-typeahead], textarea"),
+        ...Array.from(externalFields).filter((el) => el.matches("input[type=text], input[data-typeahead], textarea")),
+    ];
+    textLikeInputs.forEach((el) => {
         el.addEventListener("input", () => {
             clearTimeout(debounceTimer);
             const minChars = parseInt(el.getAttribute("data-min-chars") || "0", 10);

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Export CSV{% endblock %}
+
+{% block content %}
+<div class="page-title">Export CSV</div>
+<div class="page-subtitle">Pick the columns you want, then download. All columns are selected by default.</div>
+
+<form method="get" action="{% url 'billing_download_csv' %}">
+    {% for pair in carried_filters_list %}
+        <input type="hidden" name="{{ pair.0 }}" value="{{ pair.1 }}">
+    {% endfor %}
+
+    <div class="card export-card">
+        <div class="export-actions">
+            <a href="#" id="select-all" class="link-btn">Select all</a>
+            <a href="#" id="select-none" class="link-btn">Select none</a>
+        </div>
+        <div class="export-grid">
+            {% for key, label in columns %}
+            <label class="export-field">
+                <input type="checkbox" name="fields" value="{{ key }}" {% if key in default_keys %}checked{% endif %}>
+                {{ label }}
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="btn-row">
+        <button type="submit" class="btn">Download CSV</button>
+        <a href="{% url 'billing_real_time_page' %}" class="btn secondary">Back to Dashboard</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById("select-all").addEventListener("click", function(e) {
+    e.preventDefault();
+    document.querySelectorAll('input[name="fields"]').forEach(function(cb) { cb.checked = true; });
+});
+document.getElementById("select-none").addEventListener("click", function(e) {
+    e.preventDefault();
+    document.querySelectorAll('input[name="fields"]').forEach(function(cb) { cb.checked = false; });
+});
+</script>
+{% endblock %}

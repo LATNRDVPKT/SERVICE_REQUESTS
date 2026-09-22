@@ -76,7 +76,7 @@ DEFAULT_SELECTED_KEYS = [key for key, _, _ in EXPORT_COLUMNS]  # everything, by 
 def _fmt_dt(value):
     if not value:
         return ""
-    return django_date_format(value, "d-M-Y H:i")
+    return django_date_format(value, "d-m-Y H:i:s")
 
 
 def build_history_columns(ticket):

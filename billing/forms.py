@@ -11,6 +11,9 @@ class BillingDataForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["invoice_value_without_gst"].widget.attrs["readonly"] = True
         for field in self.fields.values():
+            if isinstance(field.widget, forms.ClearableFileInput):
+                field.widget.attrs["class"] = "form-control-file"
+                continue
             existing = field.widget.attrs.get("class", "")
             if "form-control" not in existing:
                 field.widget.attrs["class"] = (existing + " form-control").strip()

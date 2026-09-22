@@ -2,7 +2,6 @@
 # AIS140_FLOW — services/workflow.py
 # All the Part-B "on save" business rules live here so views.py stays thin:
 #   REQ-02  Automatic request closure timestamp
-#   REQ-03  Lock request remark fields after submission
 #   REQ-04  Automatic Update_to_AL_API determination
 #   REQ-05  Automatic certificate date/time stamps
 #   REQ-06  Per-field update timestamps
@@ -10,7 +9,7 @@
 # =============================================================================
 from django.utils.timezone import now
 
-from AIS140_FLOW.constants import get_responsibility, CERTIFICATE_EVENT_REMARKS
+from AIS140_FLOW.constants import get_responsibility, CERTIFICATE_EVENT_REMARKS, REMARK_COMMENT_MAP
 from AIS140_FLOW.models import AIS140RequestUpdate
 
 
@@ -59,29 +58,27 @@ def apply_part_b_business_rules(instance, previous):
     prev_perm_cert_name = previous.upload_certificate_in_ialert_01.name if previous and previous.upload_certificate_in_ialert_01 else ""
 
     # ------------------------------------------------------------------
-    # REQ-03 — lock: if request_remarks was already set, never let it
-    # (or its comments/attending engineer) move again.
+    # Request Remarks / Comments never lock — every actual change is
+    # recorded as a new history row and refreshes request_remarks_updated_at.
+    # request_closure is stamped the first time a remark is submitted and
+    # left as-is afterwards (it marks when the ticket was first worked).
     # ------------------------------------------------------------------
-    if previous and not _blank(previous.request_remarks):
-        instance.request_remarks = previous.request_remarks
-        instance.request_comments = previous.request_comments
-        instance.attending_engineer = previous.attending_engineer
-        instance.request_closure = previous.request_closure
-        instance.request_locked = True
-    else:
-        # ------------------------------------------------------------
-        # REQ-02 — auto-populate request_closure the moment the remark
-        # is newly submitted (previous was blank, new is not).
-        # ------------------------------------------------------------
-        if not _blank(instance.request_remarks) and _blank(prev_request_remarks):
+    if not _blank(instance.request_remarks) and _blank(instance.request_comments):
+        instance.request_comments = REMARK_COMMENT_MAP.get(
+            str(instance.request_remarks).strip().upper(), instance.request_comments
+        )
+
+    remarks_changed = (instance.request_remarks or "") != prev_request_remarks
+    comments_changed = (instance.request_comments or "") != ((previous.request_comments if previous else "") or "")
+    if not _blank(instance.request_remarks) and (remarks_changed or comments_changed):
+        if _blank(prev_request_remarks):
             instance.request_closure = timestamp
-            instance.request_remarks_updated_at = timestamp
-            instance.request_locked = True
-            history_rows.append(dict(
-                source_field="request_remarks", latest_remark=instance.request_remarks,
-                latest_comments=instance.request_comments, remark_datetime=timestamp,
-                attending_engineer=instance.attending_engineer,
-            ))
+        instance.request_remarks_updated_at = timestamp
+        history_rows.append(dict(
+            source_field="request_remarks", latest_remark=instance.request_remarks,
+            latest_comments=instance.request_comments, remark_datetime=timestamp,
+            attending_engineer=instance.attending_engineer,
+        ))
 
     # ------------------------------------------------------------------
     # AL remarks change -> timestamp + history row
@@ -141,7 +138,12 @@ def apply_part_b_business_rules(instance, previous):
     # ------------------------------------------------------------------
     if history_rows:
         latest_event = max(history_rows, key=lambda r: r["remark_datetime"])
-        instance.responsibility = get_responsibility(latest_event["latest_remark"])
+        instance.responsibility = get_responsibility(latest_event["source_field"], latest_event["latest_remark"])
+
+    # A cancelled request's responsibility is always Customer, regardless of
+    # which remark/event was most recently logged.
+    if instance.completion_status == "Cancelled":
+        instance.responsibility = "CUSTOMER"
 
     return history_rows
 
@@ -157,7 +159,7 @@ def write_history_rows(ticket, history_rows):
             latest_remark=row["latest_remark"],
             latest_comments=row.get("latest_comments", ""),
             remark_datetime=row["remark_datetime"],
-            responsibility=get_responsibility(row["latest_remark"]),
+            responsibility=get_responsibility(row["source_field"], row["latest_remark"]),
             attending_engineer=row.get("attending_engineer") or ticket.attending_engineer,
             source_field=row["source_field"],
         ))

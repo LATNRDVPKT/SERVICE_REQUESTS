@@ -23,7 +23,11 @@
         <div class="ro-field"><label>State</label><div>{{ ticket.state|default:"-" }}</div></div>
         <div class="ro-field"><label>Request Type</label><div>{{ ticket.request_type }}</div></div>
         <div class="ro-field"><label>Assigned Engineer</label><div>{{ ticket.assigned_engineer_email }}</div></div>
+        <div class="ro-field"><label>Attending Engineer</label><div>{{ ticket.attending_engineer|default:"-" }}</div></div>
         <div class="ro-field"><label>Update to AL API</label><div>{{ ticket.Update_to_AL_API|default:"Not determined yet" }}</div></div>
+        {% if ticket.completion_date %}
+        <div class="ro-field"><label>Completion Date</label><div>{{ ticket.completion_date|date:"d-m-Y H:i:s" }}</div></div>
+        {% endif %}
     </div>
 </div>
 
@@ -34,7 +38,7 @@
     <div class="card">
         <div class="form-grid">
             {% for field in form %}
-                {% if field.name|in_list:"device_model,icicid_no,imei_no,additional_email_id,attending_engineer,request_remarks,request_comments" %}
+                {% if field.name|in_list:"device_model,icicid_no,imei_no,additional_email_id,request_remarks,request_comments" %}
                     {% include "AIS140_FLOW/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
@@ -44,7 +48,7 @@
     <div class="card">
         <div class="form-grid">
             {% for field in form %}
-                {% if field.name|in_list:"temp_cert_reqd,upload_certificate_in_ialert,temp_cert_date,temp_raised_by,upload_certificate_in_ialert_02,upload_certificate_in_ialert_01,completion_status,Update_to_AL_API,completion_date" %}
+                {% if field.name|in_list:"temp_cert_reqd,upload_certificate_in_ialert,temp_raised_by,upload_certificate_in_ialert_02,upload_certificate_in_ialert_01,completion_status,Update_to_AL_API" %}
                     {% include "AIS140_FLOW/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}

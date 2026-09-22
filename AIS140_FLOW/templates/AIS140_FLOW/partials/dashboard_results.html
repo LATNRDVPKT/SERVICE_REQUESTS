@@ -1,16 +1,5 @@
 {% load ais140_extras %}
-<div class="dashboard-cards">
-    <div class="stat-card">
-        <div class="stat-label">Requests Received</div>
-        <div class="stat-value">{{ stats.received_count }}</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-label">Requests Completed</div>
-        <div class="stat-value">{{ stats.completed_count }}</div>
-    </div>
-</div>
-
-<div id="chart-data-holder" data-stats='{{ stats_json|escapejs }}'></div>
+<div id="chart-data-holder" data-stats='{{ stats_json }}'></div>
 
 <div class="table-wrap">
 <table class="rt-table">
@@ -47,9 +36,9 @@
                 <a class="eye-icon" title="View history" data-history-url="{% url 'ticket_history_partial' t.id %}">&#128065;</a>
                 <a href="{% url 'part_b_form' t.id %}">{{ t.unique_id }}</a>
             </td>
-            <td>{{ t.date_of_request|date:"d-M-Y H:i" }}</td>
+            <td>{{ t.date_of_request|date:"d-m-Y H:i:s" }}</td>
             <td>{{ t.assigned_engineer_email|default:"" }}</td>
-            <td>{{ t.reupdated_request_al|date:"d-M-Y H:i"|default:"" }}</td>
+            <td>{{ t.reupdated_request_al|date:"d-m-Y H:i:s"|default:"" }}</td>
             <td>{{ t.state|default:"" }}</td>
             <td>{{ t.vin_no|default:"" }}</td>
             <td>{{ t.psn|default:"" }}</td>
@@ -64,9 +53,9 @@
                 <span class="badge badge-{{ latest.responsibility|slug_badge }}">{{ latest.responsibility }}</span>
                 {% endif %}
             </td>
-            <td>{{ latest.updated_at|date:"d-M-Y H:i" }}</td>
+            <td>{{ latest.updated_at|date:"d-m-Y H:i:s" }}</td>
             <td>{{ t.completion_status|default:"" }}</td>
-            <td>{{ t.completion_date|date:"d-M-Y H:i" }}</td>
+            <td>{{ t.completion_date|date:"d-m-Y H:i:s" }}</td>
             <td>{{ t.D1_TAT|default:"" }}</td>
             <td>{{ t.total_tat|default:"" }}</td>
             <td>{{ t.imei_no|default:"" }}</td>
@@ -88,6 +77,17 @@
     {% if page_obj.has_next %}
         <a href="?page={{ page_obj.next_page_number }}&{{ filter_qs }}">Next</a>
     {% endif %}
+</div>
+
+<div class="dashboard-cards">
+    <div class="stat-card">
+        <div class="stat-label">Requests Received</div>
+        <div class="stat-value">{{ stats.received_count }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Requests Completed</div>
+        <div class="stat-value">{{ stats.completed_count }}</div>
+    </div>
 </div>
 
 <div class="chart-row">

@@ -9,9 +9,11 @@
 {% block content %}
 <div class="page-title">Real-Time Dashboard</div>
 
-<form method="get" class="toolbar" data-live-filter data-live-target="#dashboard-results"
+<form method="get" id="ais140-filter-form" class="toolbar" data-live-filter data-live-target="#dashboard-results"
       action="{% url 'real_time_page' %}">
-    <input class="form-control" type="text" name="q" placeholder="Search Unique ID or VIN" value="{{ search }}">
+    <textarea class="form-control searchbox" name="q" rows="1"
+              title="Search Unique ID, Chassis No or PSN — paste multiple values (one per line, or comma/space separated) to bulk-search"
+              placeholder="Search Unique ID, Chassis No or PSN — paste a list to bulk-search">{{ search }}</textarea>
     <select class="form-control" name="state">
         <option value="">All States</option>
         {% for s in distinct_states %}
@@ -27,17 +29,23 @@
         <option value="Cancelled" {% if completion_status == "Cancelled" %}selected{% endif %}>Cancelled</option>
         <option value="Reject" {% if completion_status == "Reject" %}selected{% endif %}>Reject</option>
     </select>
+    <select class="form-control" name="responsibility">
+        <option value="">All Responsibility</option>
+        {% for value, label in responsibility_choices %}
+            <option value="{{ value }}" {% if value == responsibility %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
 
     <span class="toolbar-label">Request Date</span>
-    <input class="form-control" type="date" name="request_date_from" value="{{ request_date_from }}" title="Request date from">
-    <input class="form-control" type="date" name="request_date_to" value="{{ request_date_to }}" title="Request date to">
+    <input class="form-control" type="datetime-local" name="request_date_from" value="{{ request_date_from }}" title="Request date/time from">
+    <input class="form-control" type="datetime-local" name="request_date_to" value="{{ request_date_to }}" title="Request date/time to">
 
     <span class="toolbar-label">Completion Date</span>
-    <input class="form-control" type="date" name="completion_date_from" value="{{ completion_date_from }}" title="Completion date from">
-    <input class="form-control" type="date" name="completion_date_to" value="{{ completion_date_to }}" title="Completion date to">
+    <input class="form-control" type="datetime-local" name="completion_date_from" value="{{ completion_date_from }}" title="Completion date/time from">
+    <input class="form-control" type="datetime-local" name="completion_date_to" value="{{ completion_date_to }}" title="Completion date/time to">
 
     <div class="spacer"></div>
-    <a class="btn secondary" href="{% url 'export_page' %}?{{ filter_qs }}">Export CSV</a>
+    <button type="submit" formaction="{% url 'export_page' %}" formnovalidate class="btn secondary">Export CSV (filtered)</button>
 </form>
 
 <div id="dashboard-results">
@@ -49,9 +57,28 @@
 <script>
 window._ais140Charts = { bar: null, pie: null };
 
+function showChartMessage(canvasId, text) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    let msg = canvas.parentElement.querySelector(".chart-empty-msg");
+    if (!msg) {
+        msg = document.createElement("div");
+        msg.className = "chart-empty-msg";
+        canvas.parentElement.appendChild(msg);
+    }
+    msg.textContent = text;
+    msg.hidden = !text;
+    canvas.hidden = !!text;
+}
+
 function renderAis140Charts() {
     const holder = document.getElementById("chart-data-holder");
-    if (!holder || typeof Chart === "undefined") return;
+    if (!holder) return;
+    if (typeof Chart === "undefined") {
+        showChartMessage("state-bar-chart", "Chart library failed to load.");
+        showChartMessage("engineer-pie-chart", "Chart library failed to load.");
+        return;
+    }
     let stats;
     try { stats = JSON.parse(holder.dataset.stats); } catch (e) { return; }
 
@@ -60,32 +87,46 @@ function renderAis140Charts() {
 
     const barCtx = document.getElementById("state-bar-chart");
     if (barCtx) {
-        window._ais140Charts.bar = new Chart(barCtx, {
-            type: "bar",
-            data: {
-                labels: stats.state_bar.labels,
-                datasets: [
-                    { label: "Received", data: stats.state_bar.received, backgroundColor: "#1b2a4a" },
-                    { label: "Completed", data: stats.state_bar.completed, backgroundColor: "#2f6f4f" },
-                ],
-            },
-            options: { responsive: true, plugins: { legend: { position: "bottom" } } },
-        });
+        if (!stats.state_bar.labels.length) {
+            showChartMessage("state-bar-chart", "No data yet — set a State on your tickets to see this chart.");
+        } else {
+            showChartMessage("state-bar-chart", "");
+            try {
+                window._ais140Charts.bar = new Chart(barCtx, {
+                    type: "bar",
+                    data: {
+                        labels: stats.state_bar.labels,
+                        datasets: [
+                            { label: "Received", data: stats.state_bar.received, backgroundColor: "#1b2a4a" },
+                            { label: "Completed", data: stats.state_bar.completed, backgroundColor: "#2f6f4f" },
+                        ],
+                    },
+                    options: { responsive: true, plugins: { legend: { position: "bottom" } } },
+                });
+            } catch (e) { showChartMessage("state-bar-chart", "Chart failed to render."); }
+        }
     }
 
     const pieCtx = document.getElementById("engineer-pie-chart");
     if (pieCtx) {
-        window._ais140Charts.pie = new Chart(pieCtx, {
-            type: "pie",
-            data: {
-                labels: stats.engineer_pie.labels,
-                datasets: [{
-                    data: stats.engineer_pie.values,
-                    backgroundColor: ["#2f6f4f", "#1b2a4a", "#8a5a1f", "#a13a2d", "#5a2d8a", "#1b4a8a", "#3a8a6a", "#c98a2f"],
-                }],
-            },
-            options: { responsive: true, plugins: { legend: { position: "bottom" } } },
-        });
+        if (!stats.engineer_pie.labels.length) {
+            showChartMessage("engineer-pie-chart", "No data yet — no completed tickets with an assigned engineer.");
+        } else {
+            showChartMessage("engineer-pie-chart", "");
+            try {
+                window._ais140Charts.pie = new Chart(pieCtx, {
+                    type: "pie",
+                    data: {
+                        labels: stats.engineer_pie.labels,
+                        datasets: [{
+                            data: stats.engineer_pie.values,
+                            backgroundColor: ["#2f6f4f", "#1b2a4a", "#8a5a1f", "#a13a2d", "#5a2d8a", "#1b4a8a", "#3a8a6a", "#c98a2f"],
+                        }],
+                    },
+                    options: { responsive: true, plugins: { legend: { position: "bottom" } } },
+                });
+            } catch (e) { showChartMessage("engineer-pie-chart", "Chart failed to render."); }
+        }
     }
 }
 

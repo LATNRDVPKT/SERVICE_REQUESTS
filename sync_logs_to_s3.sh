@@ -5,9 +5,9 @@
 S3_BUCKET="danlaw-service-requests-logs"
 LOG_DIR="/home/ec2-user/logs"
 
-echo "🔄 Syncing logs to s3://${S3_BUCKET}/logs/..."
+echo " Syncing logs to s3://${S3_BUCKET}/logs/..."
 
 # Sync the logs (copies only new/modified files)
 aws s3 sync ${LOG_DIR} s3://${S3_BUCKET}/logs/
 
-echo "✅ Sync complete."
+echo "Sync complete."

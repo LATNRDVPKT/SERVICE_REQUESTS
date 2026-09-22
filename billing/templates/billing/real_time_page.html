@@ -6,7 +6,9 @@
 
 <form method="get" class="toolbar" data-live-filter data-live-target="#billing-results"
       action="{% url 'billing_real_time_page' %}">
-    <input class="form-control" type="text" name="invoice_no" placeholder="Invoice No" value="{{ invoice_no }}">
+    <textarea class="form-control searchbox" name="invoice_no" rows="1"
+              title="Search Invoice No or Unique ID — paste multiple values (one per line, or comma/space separated) to bulk-search"
+              placeholder="Search Invoice No or Unique ID — paste a list to bulk-search">{{ invoice_no }}</textarea>
     <select class="form-control" name="customer_name">
         <option value="">All Customers</option>
         {% for c in distinct_customers %}{% if c %}<option value="{{ c }}" {% if c == customer_name %}selected{% endif %}>{{ c }}</option>{% endif %}{% endfor %}
@@ -29,7 +31,7 @@
 
     <div class="spacer"></div>
     <a class="btn secondary" href="{% url 'billing_add' %}">+ New Invoice</a>
-    <a class="btn secondary" href="{% url 'billing_download_csv' %}">Export CSV</a>
+    <button type="submit" formaction="{% url 'billing_export_page' %}" formnovalidate class="btn secondary">Export CSV</button>
 </form>
 
 <div id="billing-results">

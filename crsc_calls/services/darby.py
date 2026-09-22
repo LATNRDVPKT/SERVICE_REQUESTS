@@ -17,13 +17,25 @@ class DarbyLookupError(Exception):
     pass
 
 
+def _bearer_header(token):
+    """Builds the Authorization header from DARBY_BEARER_TOKEN regardless of
+    whether the configured value already includes a "Bearer " prefix (easy
+    mistake when pasting a token straight from an API console) — avoids
+    ever sending a malformed "Bearer Bearer ..." header, which Darby
+    would reject outright."""
+    token = (token or "").strip()
+    if token.lower().startswith("bearer "):
+        token = token[len("bearer "):].strip()
+    return f"Bearer {token}"
+
+
 def fetch_vehicle_data(vin):
     if not vin:
         raise DarbyLookupError("No VIN supplied for Darby lookup.")
     if not settings.DARBY_BEARER_TOKEN:
         raise DarbyLookupError("Darby credentials are not configured.")
 
-    headers = {"Authorization": f"Bearer {settings.DARBY_BEARER_TOKEN}", "Content-Type": "application/json"}
+    headers = {"Authorization": _bearer_header(settings.DARBY_BEARER_TOKEN), "Content-Type": "application/json"}
     try:
         response = requests.post(settings.DARBY_SEARCH_URL, json={"vin": vin},
                                   headers=headers, timeout=settings.DARBY_REQUEST_TIMEOUT)
@@ -56,19 +68,29 @@ def fetch_vehicle_data(vin):
 
 
 def run_darby_lookup_and_save(call):
+    """
+    Fetches vehicle data for `call.vin` and persists it, same orchestration
+    as AIS140_FLOW's run_darby_lookup_and_save — including recording
+    darby_lookup_status/darby_lookup_at so a blank Darby-sourced field can
+    be told apart from "lookup never ran" vs. "ran and found nothing" vs.
+    "failed". Never raises — a Darby outage never blocks call creation.
+    """
     from crsc_calls.models import DirectCall
 
     try:
         result = fetch_vehicle_data(call.vin)
     except DarbyLookupError as exc:
         logger.warning("Darby lookup failed for call %s (%s): %s", call.unique_id, call.vin, exc)
+        DirectCall.objects.filter(pk=call.pk).update(darby_lookup_status="failed", darby_lookup_at=now())
         return False
 
     if result is None:
+        DirectCall.objects.filter(pk=call.pk).update(darby_lookup_status="not_found", darby_lookup_at=now())
         return False
 
     update_fields = {k: v for k, v in result.items() if v}
-    if update_fields:
-        DirectCall.objects.filter(pk=call.pk).update(**update_fields)
-        logger.info("Darby lookup saved for call %s (%s)", call.unique_id, call.vin)
-    return bool(update_fields)
+    update_fields["darby_lookup_status"] = "success"
+    update_fields["darby_lookup_at"] = now()
+    DirectCall.objects.filter(pk=call.pk).update(**update_fields)
+    logger.info("Darby lookup saved for call %s (%s)", call.unique_id, call.vin)
+    return True

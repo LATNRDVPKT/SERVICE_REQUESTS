@@ -12,6 +12,7 @@ from django.conf import settings
 from AIS140_FLOW.constants import IALERT_FILE_MAPPING
 
 logger = logging.getLogger(__name__)
+api_logger = logging.getLogger("api_traffic")
 
 
 class IAlertPushError(Exception):
@@ -53,6 +54,11 @@ def push_update_to_ialert(ticket, form_files=None):
         if uploaded:
             files_payload[remote_key] = (uploaded.name, uploaded.file, uploaded.content_type)
 
+    api_logger.info(
+        "OUTGOING iAlert push — ticket=%s update_to_al_api=%s files=%s url=%s",
+        ticket.unique_id, update_value, list(files_payload.keys()), settings.IALERT_BASE_URL,
+    )
+
     try:
         if files_payload:
             # multipart — payload becomes form fields alongside the files
@@ -68,11 +74,19 @@ def push_update_to_ialert(ticket, form_files=None):
                 settings.IALERT_BASE_URL, json=payload, headers=headers, timeout=30
             )
     except requests.RequestException as exc:
+        api_logger.error("OUTGOING iAlert push FAILED — ticket=%s: %s", ticket.unique_id, exc)
         raise IAlertPushError(f"iAlert request failed: {exc}") from exc
 
     if response.status_code != 200:
+        api_logger.error(
+            "OUTGOING iAlert push REJECTED — ticket=%s status=%s body=%s",
+            ticket.unique_id, response.status_code, response.text[:300],
+        )
         raise IAlertPushError(f"iAlert rejected the update (HTTP {response.status_code}): "
                                f"{response.text[:300]}")
 
+    api_logger.info(
+        "OUTGOING iAlert push OK — ticket=%s status=%s", ticket.unique_id, response.status_code,
+    )
     logger.info("iAlert accepted update for ticket %s (%s)", ticket.unique_id, update_value)
     return response.json() if response.content else {}

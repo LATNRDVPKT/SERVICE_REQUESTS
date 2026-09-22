@@ -6,35 +6,34 @@
 # =============================================================================
 from django.db.models import Count, Q
 
+CLOSED_STATUSES = ["Closed", "Closed-CI", "Resolved", "Auto-Resolved"]
 
-def build_dashboard_stats(queryset):
-    received_count = queryset.count()
-    closed_q = Q(call_status__in=["Closed", "Closed-CI", "Resolved", "Auto-Resolved"])
-    closed_count = queryset.filter(closed_q).count()
-    pending_count = received_count - closed_count
 
-    status_rows = (
-        queryset.exclude(call_status__isnull=True).exclude(call_status__exact="")
+def _status_breakdown(queryset, call_type):
+    """Call-status counts for one call_type — feeds the per-type bar chart."""
+    rows = (
+        queryset.filter(call_type=call_type)
+        .exclude(call_status__isnull=True).exclude(call_status__exact="")
         .values("call_status").annotate(count=Count("id")).order_by("-count")
     )
-    status_bar = {
-        "labels": [row["call_status"] for row in status_rows],
-        "values": [row["count"] for row in status_rows],
+    return {
+        "labels": [row["call_status"] for row in rows],
+        "values": [row["count"] for row in rows],
     }
 
-    engineer_rows = (
-        queryset.exclude(complaint_assigned_to__isnull=True).exclude(complaint_assigned_to__exact="")
-        .values("complaint_assigned_to").annotate(count=Count("id")).order_by("-count")[:12]
-    )
-    engineer_pie = {
-        "labels": [row["complaint_assigned_to"] for row in engineer_rows],
-        "values": [row["count"] for row in engineer_rows],
-    }
+
+def build_dashboard_stats(queryset):
+    closed_q = Q(call_status__in=CLOSED_STATUSES)
+
+    ialert_qs = queryset.filter(call_type="ialert_call")
+    direct_qs = queryset.filter(call_type="direct_call")
 
     return {
-        "received_count": received_count,
-        "closed_count": closed_count,
-        "pending_count": pending_count,
-        "status_bar": status_bar,
-        "engineer_pie": engineer_pie,
+        "total_calls": queryset.count(),
+        "ialert_received": ialert_qs.count(),
+        "ialert_completed": ialert_qs.filter(closed_q).count(),
+        "direct_received": direct_qs.count(),
+        "direct_completed": direct_qs.filter(closed_q).count(),
+        "ialert_status": _status_breakdown(queryset, "ialert_call"),
+        "direct_status": _status_breakdown(queryset, "direct_call"),
     }

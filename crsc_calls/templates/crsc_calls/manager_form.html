@@ -13,37 +13,28 @@
 
     <div class="card">
         <div class="form-grid">
+            {% if call.date_of_closure %}
+            <div class="field">
+                <label>Date of Closure</label>
+                <input type="text" class="form-control" value="{{ call.date_of_closure|date:'d-m-Y H:i:s' }}" readonly>
+            </div>
+            {% endif %}
             {% for field in form %}
-                {% if field.name|in_list:"date_of_complaint,complaint_raised_from_location,complaint_raised,complaint_raised_by,complaint_received_by,complaint_assigned_to,submitted_to_email,call_type,ialert_ticket_no,ialert_tk_timestamp,mail_rec_timestamp" %}
+                {% if field.name|in_list:"date_of_complaint,complaint_raised_from_location,customer_raised_issue,complaint_raised,complaint_raised_by,contact_number,customer_mail_id,vehicle_avl_in_workshop,complaint_raised_through,vin,psn,complaint_assigned_to,ialert_remarks,upload_file,call_type,ialert_ticket_no" %}
                     {% include "crsc_calls/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
+            {% if call.al_updated_contact_no %}
             <div class="field">
-                <label>Complaint Raised (if Others)</label>
-                <input type="text" name="complaint_raised_other" class="form-control" placeholder="Type if 'Others' selected above">
+                <label>AL Updated Contact No</label>
+                <input type="text" class="form-control" value="{{ call.al_updated_contact_no }}" readonly>
             </div>
-            <div class="field">
-                <label>Complaint Assigned To (if Others)</label>
-                <input type="text" name="complaint_assigned_to_other" class="form-control" placeholder="Type if 'Others' selected above">
-            </div>
-            <div class="field">
-                <label>Call Type (if Others)</label>
-                <input type="text" name="call_type_other" class="form-control" placeholder="Type if 'Others' selected above">
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="form-grid">
+            {% endif %}
             {% for field in form %}
-                {% if field.name|in_list:"customer_raised_issue,contact_number,customer_mail_id,updated_contact_no,vehicle_avl_in_workshop,complaint_raised_through,vin,psn,engineer_contact_number,upload_file,ialert_remarks" %}
+                {% if field.name|in_list:"updated_contact_no,request_received_timestamp" %}
                     {% include "crsc_calls/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
-            <div class="field">
-                <label>Complaint Raised Through (if Others)</label>
-                <input type="text" name="complaint_raised_through_other" class="form-control" placeholder="Type if 'Others' selected above">
-            </div>
         </div>
     </div>
 

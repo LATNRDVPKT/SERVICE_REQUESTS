@@ -21,15 +21,15 @@
                 <a href="{% url 'billing_add_detail' record.pk %}">{{ record.unique_id }}</a>
             </td>
             <td>{{ record.invoice_no|default:"" }}</td>
-            <td>{{ record.invoice_date|date:"d-M-Y" }}</td>
+            <td>{{ record.invoice_date|date:"d-m-Y" }}</td>
             <td>{{ record.customer_name|default:"" }}</td>
             <td>{{ record.location|default:"" }}</td>
             <td>{{ record.product|default:"" }}</td>
             <td>{{ record.qty|default:"" }}</td>
             <td>{{ record.total_invoice_value_with_gst|default:"" }}</td>
             <td>{{ record.payment_status|default:"" }}</td>
-            <td>{{ record.due_date|date:"d-M-Y"|default:"" }}</td>
-            <td>{{ record.received_date|date:"d-M-Y"|default:"" }}</td>
+            <td>{{ record.due_date|date:"d-m-Y"|default:"" }}</td>
+            <td>{{ record.received_date|date:"d-m-Y"|default:"" }}</td>
             <td>{{ record.grn_no|default:"" }}</td>
         </tr>
         {% empty %}

@@ -50,10 +50,14 @@ def get_latest_ticket_update(ticket):
         return {"remark": "", "comments": "", "updated_at": None, "source": "", "responsibility": ""}
 
     latest_dt, latest_remark, latest_comments, source = max(candidates, key=lambda c: c[0])
+    responsibility = (
+        "CUSTOMER" if ticket.completion_status == "Cancelled"
+        else get_responsibility(source, latest_remark)
+    )
     return {
         "remark": latest_remark,
         "comments": latest_comments,
         "updated_at": latest_dt,
         "source": source,
-        "responsibility": get_responsibility(latest_remark),
+        "responsibility": responsibility,
     }

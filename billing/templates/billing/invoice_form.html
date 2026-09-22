@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-title">{% if record %}Edit Invoice — {{ record.unique_id }}{% else %}New Invoice{% endif %}</div>
 
-<form method="post">
+<form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="card">
         <div class="form-grid">

@@ -6,8 +6,15 @@
 # =============================================================================
 
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.db import models
 from django.utils.timezone import now
+
+iccid_validator = RegexValidator(r"^\d{20}$", "ICCID No must be exactly 20 digits.")
+imei_validator = RegexValidator(r"^\d{15}$", "IMEI No must be exactly 15 digits.")
+vin_validator = RegexValidator(r"^[A-Za-z0-9]{17}$", "Chassis No (VIN) must be exactly 17 alphanumeric characters.")
+psn_validator = RegexValidator(r"^\d{10}$", "PSN No must be exactly 10 digits.")
+phone_validator = RegexValidator(r"^\d{10}$", "Phone number must be exactly 10 digits.")
 
 
 # ---------------------------------------------------------------------------
@@ -86,9 +93,12 @@ class AIS140Request(models.Model):
     # Customer details
     # ------------------------------------------------------------------
     customer_name = _char(100, verbose_name="Customer Name")
-    customer_phone = _char(15, verbose_name="Customer Phone")
-    Customer_mobile_number = _char(15)
-    Customer_Alternate_number = _char(15, verbose_name="Cust Alt Contact No")
+    # max_length kept at 15 (not 10) — existing production rows have an
+    # 11-digit value (leading 0 trunk prefix); the validator still enforces
+    # exactly 10 digits for every new save going forward.
+    customer_phone = _char(15, verbose_name="Customer Phone", validators=[phone_validator])
+    Customer_mobile_number = _char(10, validators=[phone_validator])
+    Customer_Alternate_number = _char(10, verbose_name="Cust Alt Contact No", validators=[phone_validator])
     Customer_Email_ID = _email()
     Cust_veh_Regn_Address = models.TextField(null=True, blank=True, verbose_name="Cust Veh Regn Address")
     Cust_veh_Regn_Pincode = _char(50)
@@ -100,7 +110,11 @@ class AIS140Request(models.Model):
     # ------------------------------------------------------------------
     # Vehicle details
     # ------------------------------------------------------------------
-    vin_no = _char(50, verbose_name="Chassis No")
+    # max_length kept at 50 (not the strict 17) because at least one existing
+    # production row is 18 chars — shrinking the column would break a MySQL
+    # ALTER TABLE on deploy. The validator still enforces exactly 17
+    # alphanumeric characters for every new save going forward.
+    vin_no = _char(50, verbose_name="Chassis No", validators=[vin_validator])
     engine = _char(50, verbose_name="Engine No")
     vehicle_no = _char(50, verbose_name="Vehicle Regn No")
     vehicle_model = _char(100, verbose_name="Vehicle Model")
@@ -113,7 +127,7 @@ class AIS140Request(models.Model):
     dealer_name = _char(100, verbose_name="Dealer Name")
     dealer_code = _char(50, verbose_name="Dealer Code")
     Dealer_mail = _char(250)
-    Dealer_Contact = _char(15)
+    Dealer_Contact = _char(10, validators=[phone_validator])
     Dealer_Location = _char(100)
     Dealer_Email_ID = _email()
     Ialert_Email_ID = _email()
@@ -130,7 +144,7 @@ class AIS140Request(models.Model):
     # ------------------------------------------------------------------
     requested_by = _char(100, verbose_name="Requested By")
     requested_name = _char(100, verbose_name="Requestor Email ID")
-    requested_phone_number = _char(10, verbose_name="Requestor Phone Number")
+    requested_phone_number = _char(10, verbose_name="Requestor Phone Number", validators=[phone_validator])
     request_type = _char(50, default="Please Select")
     category = _char(50, default="--", verbose_name="Category")
     remarks = models.TextField(null=True, blank=True)
@@ -145,15 +159,15 @@ class AIS140Request(models.Model):
     assigned_engineer_email = _char(100)
     user_id = _char(50, verbose_name="User ID")
     owner_name = _char(100)
-    owner_phone = _char(15)
+    owner_phone = _char(10, validators=[phone_validator])
 
     # ------------------------------------------------------------------
     # Device / SIM
     # ------------------------------------------------------------------
     device_model = _char(50, verbose_name="Device Model")
-    psn = _char(50, verbose_name="PSN No")
-    icicid_no = _char(20, verbose_name="ICCID No")
-    imei_no = _char(17, verbose_name="IMEI No")
+    psn = _char(10, verbose_name="PSN No", validators=[psn_validator])
+    icicid_no = _char(20, verbose_name="ICCID No", validators=[iccid_validator])
+    imei_no = _char(15, verbose_name="IMEI No", validators=[imei_validator])
     rto_approval_date = models.DateField(null=True, blank=True)
     veh_run_kms = _char(100)
     total_run_kms = _char(100)

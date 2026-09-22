@@ -41,6 +41,7 @@ class BillingData(models.Model):
     unique_id = models.CharField(max_length=30, unique=True, null=True, blank=True, editable=False)
     invoice_no = models.CharField(max_length=50, null=True, blank=True)
     invoice_date = models.DateField(null=True, blank=True)
+    upload_invoice = models.FileField(upload_to="billing_invoices/", null=True, blank=True, verbose_name="Upload Invoice")
     product = models.CharField(max_length=100, null=True, blank=True)
     qty = models.IntegerField(null=True, blank=True)
     category = models.CharField(max_length=100, null=True, blank=True)

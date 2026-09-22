@@ -5,21 +5,29 @@ import csv
 import json
 import logging
 
+import re
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
+from django.db.models import Q
+from django.db.models.functions import Upper
 from django.http import HttpResponse, JsonResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils.dateparse import parse_date
-from django.utils.timezone import now, make_aware
+from django.utils.dateparse import parse_date, parse_datetime
+from django.utils.timezone import now, make_aware, is_naive
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 import datetime
 
-from .constants import TERMINAL_STATUSES, COMPLETION_DATE_TRIGGER_STATUSES
-from .forms import ManagerForm, PartBForm, PART_A_MANDATORY_LABELS
+from core.decorators import admin_required
+from .constants import (
+    TERMINAL_STATUSES, COMPLETION_DATE_TRIGGER_STATUSES, TEMP_CERT_DEFAULT_YES_STATES,
+    RESPONSIBILITY_CHOICES,
+)
+from .forms import ManagerForm, PartBForm
 from .models import AIS140Request
 from .services.darby import run_darby_lookup_and_save
 from .services.email_utils import (
@@ -31,14 +39,16 @@ from .services.latest_update import get_latest_ticket_update
 from .services.workflow import apply_part_b_business_rules, write_history_rows
 from .services.export import EXPORT_COLUMNS, DEFAULT_SELECTED_KEYS, build_row, selected_columns
 from .services.dashboard_stats import build_dashboard_stats
+from .services.tat import compute_tats
 
 logger = logging.getLogger(__name__)
+api_logger = logging.getLogger("api_traffic")
 
 
 # =============================================================================
 # Part-A — Manager ticket creation / edit
 # =============================================================================
-@login_required
+@admin_required(message="New/edit AIS140 tickets (Part-A) is restricted to admin users.")
 def part_a_form(request, ticket_id=None):
     instance = get_object_or_404(AIS140Request, pk=ticket_id) if ticket_id else None
     is_new = instance is None
@@ -50,7 +60,10 @@ def part_a_form(request, ticket_id=None):
             if is_new:
                 ticket.date_of_request = ticket.date_of_request or now()
                 ticket.ticket_through = ticket.ticket_through or "Manual"
+                if (ticket.state or "").strip().upper() in TEMP_CERT_DEFAULT_YES_STATES:
+                    ticket.temp_cert_reqd = "Yes"
             previous_engineer = instance.assigned_engineer_email if instance else None
+            compute_tats(ticket)
             ticket.save()
 
             if ticket.assigned_engineer_email and ticket.assigned_engineer_email not in ("--", ""):
@@ -67,11 +80,7 @@ def part_a_form(request, ticket_id=None):
             messages.success(request, f"Ticket {ticket.unique_id} saved successfully.")
             return redirect("part_a_form_edit", ticket_id=ticket.id)
         else:
-            missing = [
-                PART_A_MANDATORY_LABELS[f] for f in PART_A_MANDATORY_LABELS if f in form.errors
-            ]
-            if missing:
-                messages.error(request, "Please fill the mandatory fields: " + ", ".join(missing))
+            _flash_form_errors(request, form)
     else:
         form = ManagerForm(instance=instance)
 
@@ -92,6 +101,10 @@ def part_b_form(request, ticket_id):
         form = PartBForm(request.POST, request.FILES, instance=ticket)
         if form.is_valid():
             updated = form.save(commit=False)
+            # Attending Engineer is stamped from the authenticated user, not
+            # hand-typed — so the audit trail always names whoever actually
+            # made the change.
+            updated.attending_engineer = _display_name(request.user)
 
             previous = AIS140Request.objects.get(pk=ticket.pk)
             history_rows = apply_part_b_business_rules(updated, previous)
@@ -100,10 +113,12 @@ def part_b_form(request, ticket_id):
             becomes_terminal = updated.completion_status in TERMINAL_STATUSES
             if not was_terminal and updated.completion_status in COMPLETION_DATE_TRIGGER_STATUSES:
                 updated.completion_date = now()
+            compute_tats(updated)
 
+            is_admin = _user_role(request.user) == "admin"
             try:
                 with transaction.atomic():
-                    if previous.request_id:
+                    if previous.request_id and is_admin:
                         push_update_to_ialert(updated, form_files=request.FILES)
                     updated.save()
                     write_history_rows(updated, history_rows)
@@ -116,8 +131,16 @@ def part_b_form(request, ticket_id):
             if not was_terminal and becomes_terminal:
                 send_completion_email(updated)
 
-            messages.success(request, "Ticket updated successfully.")
+            if previous.request_id and not is_admin:
+                messages.success(
+                    request,
+                    "Ticket updated successfully. An admin must submit this ticket to push the update to AL.",
+                )
+            else:
+                messages.success(request, "Ticket updated successfully.")
             return redirect("part_b_form", ticket_id=updated.id)
+        else:
+            _flash_form_errors(request, form)
     else:
         form = PartBForm(instance=ticket)
 
@@ -132,33 +155,94 @@ def part_b_form(request, ticket_id):
 REALTIME_PAGE_SIZE = 25
 
 
+def _user_role(user):
+    profile = getattr(user, "profile", None)
+    return profile.role if profile else "engineer"
+
+
+def _display_name(user):
+    profile = getattr(user, "profile", None)
+    if profile and profile.display_name:
+        return profile.display_name
+    return user.get_username()
+
+
+def _flash_form_errors(request, form):
+    """Flashes every validation error with its field label, so the engineer
+    always sees a clear reason the form didn't submit — not just whichever
+    inline errors happen to be visible on screen."""
+    for field_name, errors in form.errors.items():
+        if field_name == "__all__":
+            label = None
+        else:
+            label = form.fields[field_name].label if field_name in form.fields else field_name
+        for err in errors:
+            messages.error(request, f"{label}: {err}" if label else err)
+
+
+BULK_TOKEN_SPLIT_RE = re.compile(r"[\s,;]+")
+
+
+def _parse_bulk_tokens(raw):
+    """Splits a pasted block of Chassis No / PSN / Unique ID values (one per
+    line, or comma/semicolon/whitespace separated) into a deduped list of
+    non-empty, uppercased tokens for case-insensitive exact matching."""
+    if not raw:
+        return []
+    tokens = {t.strip().upper() for t in BULK_TOKEN_SPLIT_RE.split(raw) if t.strip()}
+    return sorted(tokens)
+
+
+def _parse_datetime_local(raw):
+    """Parses an HTML5 datetime-local value ('YYYY-MM-DDTHH:MM'); falls back
+    to a bare date ('YYYY-MM-DD') for old bookmarked/typed links."""
+    if not raw:
+        return None
+    dt = parse_datetime(raw)
+    if dt:
+        return make_aware(dt) if is_naive(dt) else dt
+    d = parse_date(raw)
+    if d:
+        return make_aware(datetime.datetime.combine(d, datetime.time.min))
+    return None
+
+
 def _parse_date_range(request, from_key, to_key):
     """Returns (from_date, to_date) as aware datetimes, or (None, None)."""
-    from_raw = request.GET.get(from_key)
-    to_raw = request.GET.get(to_key)
-    from_dt = to_dt = None
-    if from_raw:
-        d = parse_date(from_raw)
-        if d:
-            from_dt = make_aware(datetime.datetime.combine(d, datetime.time.min))
-    if to_raw:
-        d = parse_date(to_raw)
-        if d:
-            to_dt = make_aware(datetime.datetime.combine(d, datetime.time.max))
+    from_dt = _parse_datetime_local(request.GET.get(from_key))
+    to_dt = _parse_datetime_local(request.GET.get(to_key))
     return from_dt, to_dt
 
 
 def _apply_dashboard_filters(request, qs):
     state = request.GET.get("state")
     completion_status = request.GET.get("completion_status")
-    search = request.GET.get("q")
+    responsibility = request.GET.get("responsibility")
+    search = (request.GET.get("q") or "").strip()
+    bulk_tokens = _parse_bulk_tokens(search)
 
     if state:
         qs = qs.filter(state__iexact=state)
     if completion_status:
         qs = qs.filter(completion_status=completion_status)
-    if search:
-        qs = qs.filter(unique_id__icontains=search) | qs.filter(vin_no__icontains=search)
+    if responsibility:
+        qs = qs.filter(responsibility=responsibility)
+
+    # The same search box does both a single free-text partial match and a
+    # bulk paste of many Chassis No / PSN / Unique ID values (one per line,
+    # or comma/semicolon/whitespace separated) — multiple tokens switch it
+    # to an exact, case-insensitive match against all three fields; a
+    # single token keeps the more forgiving partial "contains" match.
+    if len(bulk_tokens) > 1:
+        qs = qs.annotate(
+            _uid_u=Upper("unique_id"), _vin_u=Upper("vin_no"), _psn_u=Upper("psn"),
+        ).filter(
+            Q(_uid_u__in=bulk_tokens) | Q(_vin_u__in=bulk_tokens) | Q(_psn_u__in=bulk_tokens)
+        )
+    elif search:
+        qs = qs.filter(
+            Q(unique_id__icontains=search) | Q(vin_no__icontains=search) | Q(psn__icontains=search)
+        )
 
     req_from, req_to = _parse_date_range(request, "request_date_from", "request_date_to")
     if req_from:
@@ -197,6 +281,8 @@ def real_time_page(request):
         "page_obj": page_obj,
         "state": request.GET.get("state", ""),
         "completion_status": request.GET.get("completion_status", ""),
+        "responsibility": request.GET.get("responsibility", ""),
+        "responsibility_choices": RESPONSIBILITY_CHOICES,
         "search": request.GET.get("q", ""),
         "request_date_from": request.GET.get("request_date_from", ""),
         "request_date_to": request.GET.get("request_date_to", ""),
@@ -273,19 +359,30 @@ REQUIRED_API_FIELDS = [
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_create_ais140_ticket(request):
+    api_logger.info(
+        "INCOMING api_create_ais140_ticket — from=%s bytes=%s",
+        request.META.get("REMOTE_ADDR"), len(request.body or b""),
+    )
     try:
         data = json.loads(request.body.decode("utf-8"))
-    except (ValueError, UnicodeDecodeError):
+    except (ValueError, UnicodeDecodeError) as exc:
+        api_logger.error("INCOMING api_create_ais140_ticket — invalid JSON body: %s", exc)
         return JsonResponse({"error": "Invalid JSON body."}, status=400)
 
     missing = [f for f in REQUIRED_API_FIELDS if not data.get(f)]
     if missing:
+        api_logger.error(
+            "INCOMING api_create_ais140_ticket — missing fields=%s request_id=%s",
+            missing, data.get("request_id"),
+        )
         return JsonResponse({"error": "Missing required fields.", "fields": missing}, status=400)
 
+    created_at = now()
     ticket = AIS140Request.objects.create(
         request_id=data["request_id"],
-        date_of_request=now(),
-        Customer_assigned_date=now(),
+        date_of_request=created_at,
+        Customer_assigned_date=created_at,
+        D1_TAT="00:00:00",
         state=data["state"],
         vin_no=data["chassis_number"],
         engine=data["engine_no"],
@@ -317,29 +414,43 @@ def api_create_ais140_ticket(request):
         category=data.get("category"),
         ticket_through="A.L API",
         assigned_engineer_email="--",
+        temp_cert_reqd=(
+            "Yes" if (data["state"] or "").strip().upper() in TEMP_CERT_DEFAULT_YES_STATES else "No"
+        ),
     )
 
     # REQ-13 — Darby auto-lookup right after ticket creation
     run_darby_lookup_and_save(ticket)
 
+    api_logger.info(
+        "INCOMING api_create_ais140_ticket OK — request_id=%s unique_id=%s",
+        ticket.request_id, ticket.unique_id,
+    )
     return JsonResponse({"unique_id": ticket.unique_id, "id": ticket.id}, status=201)
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_update_ais140_remarks(request):
+    api_logger.info(
+        "INCOMING api_update_ais140_remarks — from=%s bytes=%s",
+        request.META.get("REMOTE_ADDR"), len(request.body or b""),
+    )
     try:
         data = json.loads(request.body.decode("utf-8"))
-    except (ValueError, UnicodeDecodeError):
+    except (ValueError, UnicodeDecodeError) as exc:
+        api_logger.error("INCOMING api_update_ais140_remarks — invalid JSON body: %s", exc)
         return JsonResponse({"error": "Invalid JSON body."}, status=400)
 
     request_id = data.get("request_id")
     if not request_id:
+        api_logger.error("INCOMING api_update_ais140_remarks — missing request_id")
         return JsonResponse({"error": "request_id is required."}, status=400)
 
     try:
         ticket = AIS140Request.objects.get(request_id=request_id)
     except AIS140Request.DoesNotExist:
+        api_logger.error("INCOMING api_update_ais140_remarks — unknown request_id=%s", request_id)
         raise Http404("No ticket found for that request_id.")
 
     ticket.AL_remarks = data.get("al_remarks", ticket.AL_remarks)
@@ -354,6 +465,10 @@ def api_update_ais140_remarks(request):
     }])
 
     send_remarks_updated_email(ticket)
+    api_logger.info(
+        "INCOMING api_update_ais140_remarks OK — request_id=%s unique_id=%s",
+        request_id, ticket.unique_id,
+    )
     return JsonResponse({"status": "ok", "unique_id": ticket.unique_id})
 
 

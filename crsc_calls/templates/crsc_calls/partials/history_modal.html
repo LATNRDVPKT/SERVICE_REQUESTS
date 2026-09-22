@@ -16,8 +16,8 @@
             <td>{{ h.remark }}</td>
             <td>{{ h.comment }}</td>
             <td>{{ h.engineer|default:"-" }}</td>
-            <td>{{ h.event_datetime|date:"d-M-Y H:i" }}</td>
-            <td>{{ h.next_follow_up_exp_date|date:"d-M-Y H:i"|default:"-" }}</td>
+            <td>{{ h.event_datetime|date:"d-m-Y H:i:s" }}</td>
+            <td>{{ h.next_follow_up_exp_date|date:"d-m-Y H:i:s"|default:"-" }}</td>
             <td>{{ h.al_updated_contact_no|default:"-" }}</td>
             <td>
                 {% if h.responsibility %}

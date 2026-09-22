@@ -2,7 +2,7 @@
 <h3>History — {{ ticket.unique_id }} ({{ ticket.vin_no }})</h3>
 
 <div class="history-summary">
-    <div><strong>Updated To DTIL:</strong> {{ ticket.reupdated_request_al|date:"d-M-Y H:i"|default:"-" }}</div>
+    <div><strong>Updated To DTIL:</strong> {{ ticket.reupdated_request_al|date:"d-m-Y H:i:s"|default:"-" }}</div>
     <div><strong>AL Remarks:</strong> {{ ticket.AL_remarks|default:"-" }}</div>
     <div><strong>AL Comments:</strong> {{ ticket.AL_comments|default:"-" }}</div>
 </div>
@@ -14,6 +14,8 @@
             <th>VIN No</th>
             <th>Remarks</th>
             <th>Comments</th>
+            <th>AL Remarks</th>
+            <th>AL Comments</th>
             <th>Attending Engineer</th>
             <th>Updated Date</th>
             <th>Responsibility</th>
@@ -24,10 +26,12 @@
         <tr>
             <td>{{ h.unique_id }}</td>
             <td>{{ h.vin_no }}</td>
-            <td>{{ h.latest_remark }}</td>
-            <td>{{ h.latest_comments }}</td>
+            <td>{% if h.source_field != "al_remarks" %}{{ h.latest_remark }}{% endif %}</td>
+            <td>{% if h.source_field != "al_remarks" %}{{ h.latest_comments }}{% endif %}</td>
+            <td>{% if h.source_field == "al_remarks" %}{{ h.latest_remark }}{% endif %}</td>
+            <td>{% if h.source_field == "al_remarks" %}{{ h.latest_comments }}{% endif %}</td>
             <td>{{ h.attending_engineer|default:"-" }}</td>
-            <td>{{ h.remark_datetime|date:"d-M-Y H:i" }}</td>
+            <td>{{ h.remark_datetime|date:"d-m-Y H:i:s" }}</td>
             <td>
                 {% if h.responsibility %}
                 <span class="badge badge-{{ h.responsibility|slug_badge }}">{{ h.responsibility }}</span>
@@ -35,7 +39,7 @@
             </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7">No history recorded yet for this ticket.</td></tr>
+        <tr><td colspan="9">No history recorded yet for this ticket.</td></tr>
         {% endfor %}
     </tbody>
 </table>

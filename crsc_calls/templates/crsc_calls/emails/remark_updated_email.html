@@ -1,0 +1,12 @@
+<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1f242e;">
+    <p>Hello,</p>
+    <p>A follow-up has been logged on call <strong>{{ call.unique_id }}</strong>.</p>
+    <table cellpadding="6" style="border-collapse: collapse;">
+        <tr><td><strong>Unique ID</strong></td><td>{{ call.unique_id }}</td></tr>
+        <tr><td><strong>VIN</strong></td><td>{{ call.vin }}</td></tr>
+        <tr><td><strong>Follow-Up Level</strong></td><td>{{ call.follow_up_level }}</td></tr>
+        <tr><td><strong>Remark</strong></td><td>{{ call.follow_up_remark }}</td></tr>
+        <tr><td><strong>Comment</strong></td><td>{{ call.follow_up_comment|default:"" }}</td></tr>
+    </table>
+    <p style="color:#5a6472; font-size:12px;">This is an automated notification from the CRSC Calls system.</p>
+</div>

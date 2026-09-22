@@ -12,12 +12,17 @@
     {% if user.is_authenticated %}
     <header class="topbar">
         <div class="topbar-inner">
-            <a class="brand" href="{% url 'home' %}">Service Requests</a>
+            <a class="brand" href="{% url 'home' %}">
+                <img src="{% static 'images/company-logo.png' %}" alt="" class="brand-logo">
+                Service Requests
+            </a>
             <nav>
                 <a href="{% url 'home' %}">Home</a>
                 <a href="{% url 'real_time_page' %}">AIS140</a>
                 <a href="{% url 'crsc_real_time_page' %}">CRSC Calls</a>
                 {% if user.profile.role == 'admin' %}
+                <a href="{% url 'part_a_form' %}">New AIS140 Ticket</a>
+                <a href="{% url 'crsc_manager_form' %}">New CRSC Call</a>
                 <a href="{% url 'billing_real_time_page' %}">Billing</a>
                 {% endif %}
                 {% if user.is_staff %}<a href="/admin/">Admin</a>{% endif %}
