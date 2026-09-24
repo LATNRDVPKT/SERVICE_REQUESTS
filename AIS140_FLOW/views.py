@@ -214,12 +214,21 @@ def _parse_date_range(request, from_key, to_key):
     return from_dt, to_dt
 
 
+SEARCH_FIELD_CHOICES = [
+    ("unique_id", "Unique ID"),
+    ("vin", "Chassis No (VIN)"),
+    ("psn", "PSN"),
+]
+SEARCH_FIELD_LOOKUP = {"unique_id": "unique_id", "vin": "vin_no", "psn": "psn"}
+
+
 def _apply_dashboard_filters(request, qs):
     state = request.GET.get("state")
     completion_status = request.GET.get("completion_status")
     responsibility = request.GET.get("responsibility")
-    search = (request.GET.get("q") or "").strip()
-    bulk_tokens = _parse_bulk_tokens(search)
+    search_field = SEARCH_FIELD_LOOKUP.get(request.GET.get("search_field"), "unique_id")
+    search_value = (request.GET.get("search_value") or "").strip()
+    bulk_tokens = _parse_bulk_tokens(search_value)
 
     if state:
         qs = qs.filter(state__iexact=state)
@@ -228,21 +237,15 @@ def _apply_dashboard_filters(request, qs):
     if responsibility:
         qs = qs.filter(responsibility=responsibility)
 
-    # The same search box does both a single free-text partial match and a
-    # bulk paste of many Chassis No / PSN / Unique ID values (one per line,
-    # or comma/semicolon/whitespace separated) — multiple tokens switch it
-    # to an exact, case-insensitive match against all three fields; a
-    # single token keeps the more forgiving partial "contains" match.
+    # Search runs against exactly the field chosen in the dropdown (Unique
+    # ID / Chassis No / PSN) — pasting multiple values (one per line, or
+    # comma/semicolon/whitespace separated) switches to an exact,
+    # case-insensitive match against all of them; a single value keeps the
+    # more forgiving partial "contains" match.
     if len(bulk_tokens) > 1:
-        qs = qs.annotate(
-            _uid_u=Upper("unique_id"), _vin_u=Upper("vin_no"), _psn_u=Upper("psn"),
-        ).filter(
-            Q(_uid_u__in=bulk_tokens) | Q(_vin_u__in=bulk_tokens) | Q(_psn_u__in=bulk_tokens)
-        )
-    elif search:
-        qs = qs.filter(
-            Q(unique_id__icontains=search) | Q(vin_no__icontains=search) | Q(psn__icontains=search)
-        )
+        qs = qs.annotate(_search_u=Upper(search_field)).filter(_search_u__in=bulk_tokens)
+    elif search_value:
+        qs = qs.filter(**{f"{search_field}__icontains": search_value})
 
     req_from, req_to = _parse_date_range(request, "request_date_from", "request_date_to")
     if req_from:
@@ -283,7 +286,9 @@ def real_time_page(request):
         "completion_status": request.GET.get("completion_status", ""),
         "responsibility": request.GET.get("responsibility", ""),
         "responsibility_choices": RESPONSIBILITY_CHOICES,
-        "search": request.GET.get("q", ""),
+        "search_field": request.GET.get("search_field", "unique_id"),
+        "search_value": request.GET.get("search_value", ""),
+        "search_field_choices": SEARCH_FIELD_CHOICES,
         "request_date_from": request.GET.get("request_date_from", ""),
         "request_date_to": request.GET.get("request_date_to", ""),
         "completion_date_from": request.GET.get("completion_date_from", ""),
@@ -410,6 +415,7 @@ def api_create_ais140_ticket(request):
         Dealer_mail=data.get("dealer_email_id"),
         TSM_mail=data.get("tsm_email_id"),
         Ialert_Email_ID=data.get("ialert_email_id"),
+        sos_fitment_date=data.get("sos_confirmed_on"),
         zone=data.get("zoneName"),
         category=data.get("category"),
         ticket_through="A.L API",
@@ -442,7 +448,10 @@ def api_update_ais140_remarks(request):
         api_logger.error("INCOMING api_update_ais140_remarks — invalid JSON body: %s", exc)
         return JsonResponse({"error": "Invalid JSON body."}, status=400)
 
+    api_logger.info("Payload Re-Update from A.L: %s", data)
+
     request_id = data.get("request_id")
+    vin_no = (data.get("vin_no") or "").strip()
     if not request_id:
         api_logger.error("INCOMING api_update_ais140_remarks — missing request_id")
         return JsonResponse({"error": "request_id is required."}, status=400)
@@ -453,8 +462,16 @@ def api_update_ais140_remarks(request):
         api_logger.error("INCOMING api_update_ais140_remarks — unknown request_id=%s", request_id)
         raise Http404("No ticket found for that request_id.")
 
-    ticket.AL_remarks = data.get("al_remarks", ticket.AL_remarks)
-    ticket.AL_comments = data.get("al_comments", ticket.AL_comments)
+    # request_id is the authoritative match key — vin_no is only cross-checked
+    # for an audit trail, never used to block the update.
+    if vin_no and ticket.vin_no and vin_no.upper() != ticket.vin_no.strip().upper():
+        api_logger.warning(
+            "INCOMING api_update_ais140_remarks — vin_no mismatch request_id=%s payload_vin=%s ticket_vin=%s",
+            request_id, vin_no, ticket.vin_no,
+        )
+
+    ticket.AL_remarks = data.get("remarks", ticket.AL_remarks)
+    ticket.AL_comments = data.get("comments", ticket.AL_comments)
     ticket.al_remarks_updated_at = now()
     ticket.save(update_fields=["AL_remarks", "AL_comments", "al_remarks_updated_at"])
 

@@ -23,11 +23,9 @@ phone_validator = RegexValidator(r"^\d{10}$", "Phone number must be exactly 10 d
 TEMP_CERT_CHOICES = [("Yes", "Yes"), ("No", "No")]
 
 UPDATE_TO_AL_API_CHOICES = [
-    ("", "Not determined yet"),
-    ("Permanent", "Permanent"),
+    ("Remark", "Remark"),
     ("Temporary", "Temporary"),
-    ("Temp + Perm", "Temp + Perm"),
-    ("Request", "Request"),
+    ("Permanent", "Permanent"),
 ]
 
 COMPLETION_STATUS_CHOICES = [
@@ -88,6 +86,7 @@ class AIS140Request(models.Model):
     AL_assigned_date = _dt(verbose_name="A.L Assigned Date")
     reupdated_request_al = _dt(verbose_name="Updated To DTIL")
     reupdated_request_al_updated_at = _dt(verbose_name="Updated To DTIL — Last Changed")
+    sos_fitment_date = _dt(verbose_name="SOS Fitment Date")
 
     # ------------------------------------------------------------------
     # Customer details

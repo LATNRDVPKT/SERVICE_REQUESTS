@@ -24,6 +24,7 @@ from .forms import ManagerForm, EngineerForm, PART_A_MANDATORY_LABELS
 from .models import DirectCall, FIR_CLOSURE_STATUSES, CUSTOMER_CLOSURE_STATUSES, CALL_STATUS_CHOICES
 from .services.darby import run_darby_lookup_and_save
 from .services.dashboard_stats import build_dashboard_stats
+from .services.ialert import push_follow_up_to_ialert, IAlertPushError
 from .services.email_utils import (
     send_assignment_email, send_customer_email, send_fir_approval_email,
     send_remark_updated_email, send_closure_email, send_fir_pdf_email,
@@ -136,6 +137,18 @@ def engineer_form(request, call_id):
             history_rows = apply_follow_up_rules(updated, previous)
             compute_tats(updated)
 
+            # iAlert-originated calls must be accepted by the AL iAlert API
+            # before anything is saved locally — if AL rejects the update,
+            # nothing is saved and the engineer sees exactly why. Direct
+            # calls (and any other call_type) skip this and save straight
+            # through once the form itself validates.
+            if updated.call_type == "ialert_call":
+                try:
+                    push_follow_up_to_ialert(updated)
+                except IAlertPushError as exc:
+                    messages.error(request, f"Not submitted — AL iAlert API rejected this update: {exc}")
+                    return render(request, "crsc_calls/engineer_form.html", {"form": form, "call": call, "role": role})
+
             was_fir = previous.call_status == "FIR - For approval"
             updated.save()
             write_history_rows(updated, history_rows)
@@ -212,14 +225,23 @@ def _parse_date_range(request, from_key, to_key):
     return _parse_datetime_local(request.GET.get(from_key)), _parse_datetime_local(request.GET.get(to_key))
 
 
+SEARCH_FIELD_CHOICES = [
+    ("unique_id", "Unique ID"),
+    ("vin", "VIN"),
+    ("psn", "PSN"),
+]
+SEARCH_FIELD_LOOKUP = {"unique_id": "unique_id", "vin": "vin", "psn": "psn"}
+
+
 def _apply_filters(request, qs):
     call_status = request.GET.get("call_status")
     call_type = request.GET.get("call_type")
     engineer = request.GET.get("engineer")
     responsibility = request.GET.get("responsibility")
     ialert_ticket_no = request.GET.get("ialert_ticket_no")
-    search = (request.GET.get("q") or "").strip()
-    bulk_tokens = _parse_bulk_tokens(search)
+    search_field = SEARCH_FIELD_LOOKUP.get(request.GET.get("search_field"), "unique_id")
+    search_value = (request.GET.get("search_value") or "").strip()
+    bulk_tokens = _parse_bulk_tokens(search_value)
 
     if call_status:
         qs = qs.filter(call_status=call_status)
@@ -232,21 +254,15 @@ def _apply_filters(request, qs):
     if ialert_ticket_no:
         qs = qs.filter(ialert_ticket_no__icontains=ialert_ticket_no)
 
-    # Same search box does both a single free-text partial match and a bulk
-    # paste of many VIN / PSN / Unique ID values (one per line, or
-    # comma/semicolon/whitespace separated) — multiple tokens switch it to
-    # an exact, case-insensitive match against all three fields; a single
-    # token keeps the more forgiving partial "contains" match.
+    # Search runs against exactly the field chosen in the dropdown (Unique
+    # ID / VIN / PSN) — pasting multiple values (one per line, or
+    # comma/semicolon/whitespace separated) switches to an exact,
+    # case-insensitive match against all of them; a single value keeps the
+    # more forgiving partial "contains" match.
     if len(bulk_tokens) > 1:
-        qs = qs.annotate(
-            _uid_u=Upper("unique_id"), _vin_u=Upper("vin"), _psn_u=Upper("psn"),
-        ).filter(
-            Q(_uid_u__in=bulk_tokens) | Q(_vin_u__in=bulk_tokens) | Q(_psn_u__in=bulk_tokens)
-        )
-    elif search:
-        qs = qs.filter(
-            Q(unique_id__icontains=search) | Q(vin__icontains=search) | Q(psn__icontains=search)
-        )
+        qs = qs.annotate(_search_u=Upper(search_field)).filter(_search_u__in=bulk_tokens)
+    elif search_value:
+        qs = qs.filter(**{f"{search_field}__icontains": search_value})
 
     comp_from, comp_to = _parse_date_range(request, "complaint_date_from", "complaint_date_to")
     if comp_from:
@@ -289,7 +305,9 @@ def real_time_page(request):
         "responsibility": request.GET.get("responsibility", ""),
         "responsibility_choices": RESPONSIBILITY_CHOICES,
         "ialert_ticket_no": request.GET.get("ialert_ticket_no", ""),
-        "search": request.GET.get("q", ""),
+        "search_field": request.GET.get("search_field", "unique_id"),
+        "search_value": request.GET.get("search_value", ""),
+        "search_field_choices": SEARCH_FIELD_CHOICES,
         "complaint_date_from": request.GET.get("complaint_date_from", ""),
         "complaint_date_to": request.GET.get("complaint_date_to", ""),
         "closure_date_from": request.GET.get("closure_date_from", ""),

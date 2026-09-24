@@ -20,7 +20,6 @@
         <div class="ro-field"><label>Engineer Responsible</label><div>{{ call.complaint_assigned_to }}</div></div>
         <div class="ro-field"><label>Complaint Raised By</label><div>{{ call.complaint_raised_by|default:"-" }}</div></div>
         <div class="ro-field"><label>Submitted To</label><div>{{ call.submitted_to_email|default:"-" }}</div></div>
-        <div class="ro-field"><label>Follow-Up Engineer</label><div>{{ call.follow_up_engineer|default:"-" }}</div></div>
         <div class="ro-field"><label>iAlert Ticket No</label><div>{{ call.ialert_ticket_no|default:"-" }}</div></div>
         <div class="ro-field"><label>Customer Voice</label><div>{{ call.customer_raised_issue|default:"-"|truncatechars:60 }}</div></div>
     </div>

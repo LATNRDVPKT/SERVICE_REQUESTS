@@ -41,9 +41,10 @@ def _send(subject, template_name, context, to, cc=None, attachment=None, raw_att
 
     try:
         message.send(fail_silently=False)
+        logger.info("E-mail SENT — subject=%r to=%s cc=%s", subject, message.to, message.cc)
         return True
     except Exception:  # noqa: BLE001
-        logger.exception("Failed to send e-mail '%s' to %s", subject, to)
+        logger.exception("E-mail FAILED — subject=%r to=%s cc=%s", subject, message.to, message.cc)
         return False
 
 

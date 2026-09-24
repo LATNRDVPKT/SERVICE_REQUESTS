@@ -11,9 +11,14 @@
 
 <form method="get" id="ais140-filter-form" class="toolbar" data-live-filter data-live-target="#dashboard-results"
       action="{% url 'real_time_page' %}">
-    <textarea class="form-control searchbox" name="q" rows="1"
-              title="Search Unique ID, Chassis No or PSN — paste multiple values (one per line, or comma/space separated) to bulk-search"
-              placeholder="Search Unique ID, Chassis No or PSN — paste a list to bulk-search">{{ search }}</textarea>
+    <select class="form-control" name="search_field">
+        {% for value, label in search_field_choices %}
+            <option value="{{ value }}" {% if value == search_field %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <input class="form-control searchbox" type="text" name="search_value" value="{{ search_value }}"
+           title="Paste multiple values (one per line, or comma/space separated) to bulk-search"
+           placeholder="Search by selected field — paste a list to bulk-search">
     <select class="form-control" name="state">
         <option value="">All States</option>
         {% for s in distinct_states %}

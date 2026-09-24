@@ -2,12 +2,10 @@
 # AIS140_FLOW — forms.py
 # =============================================================================
 import json
-from types import SimpleNamespace
 
 from django import forms
 from .models import AIS140Request
 from .constants import REQUEST_REMARK_CHOICES, REMARK_COMMENT_MAP
-from .services.workflow import determine_update_to_al_api
 
 # Part-A mandatory fields (REQ-01)
 PART_A_MANDATORY_FIELDS = [
@@ -129,12 +127,11 @@ class PartBForm(forms.ModelForm):
       - Attending Engineer is not a form field — the view stamps it from
         the logged-in user on every save (see views.part_b_form), so the
         audit trail always reflects who was actually authenticated.
-      - For AL-API tickets (request_id present and ticket_through is
-        "A.L API"), Update_to_AL_API must resolve to a non-blank value —
-        i.e. the engineer must supply a Request Remark or a certificate.
-      - For API tickets, the matching certificate file or the request
-        remark/comments is additionally required depending on the
-        resolved Update_to_AL_API value.
+      - Update_to_AL_API is engineer-selected (Remark / Temporary /
+        Permanent) — for AL-API tickets (request_id present and
+        ticket_through is "A.L API") it's mandatory, and the matching
+        certificate file or request remark/comments is additionally
+        required depending on whichever value was chosen.
     """
 
     class Meta:
@@ -166,14 +163,10 @@ class PartBForm(forms.ModelForm):
             "veh_run_kms": forms.TextInput(attrs={"placeholder": "Enter Vehicle Run in Kms"}),
             "total_run_kms": forms.TextInput(attrs={"placeholder": "Enter Vehicle Total Run in Kms"}),
             "vahan_uploaded_by": forms.TextInput(attrs={"placeholder": "Enter Name"}),
-            "Update_to_AL_API": forms.Select(attrs={"readonly": "readonly"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Update_to_AL_API is auto-derived (REQ-04) — never hand-edited.
-        if "Update_to_AL_API" in self.fields:
-            self.fields["Update_to_AL_API"].disabled = True
         _apply_uniform_widget_style(self)
 
     def clean(self):
@@ -206,28 +199,19 @@ class PartBForm(forms.ModelForm):
         if not request_id or not str(request_id).strip():
             return cleaned  # manual ticket — no further API validation
 
-        prospective = SimpleNamespace(
-            upload_certificate_in_ialert=self.files.get("upload_certificate_in_ialert")
-                or getattr(instance, "upload_certificate_in_ialert", None),
-            upload_certificate_in_ialert_01=self.files.get("upload_certificate_in_ialert_01")
-                or getattr(instance, "upload_certificate_in_ialert_01", None),
-            request_remarks=cleaned.get("request_remarks"),
-        )
-        api_value = determine_update_to_al_api(prospective)
+        # Update to AL API is engineer-selected (Remark / Temporary /
+        # Permanent) — the matching remark or certificate is mandatory for
+        # whichever value was actually chosen.
+        api_value = (cleaned.get("Update_to_AL_API") or "").strip()
 
-        # Update to AL API is mandatory for AL-API tickets — unless the AL
-        # Request ID is blank or Ticket Through isn't AL API (checked above).
         if is_al_api_ticket and not api_value:
-            self.add_error(
-                "request_remarks",
-                "Update to AL API is required — add a Request Remark or upload a certificate.",
-            )
+            self.add_error("Update_to_AL_API", "Update to AL API is required.")
 
-        if api_value == "Request":
+        if api_value == "Remark":
             if not filled("request_remarks"):
-                self.add_error("request_remarks", "Request Remarks is required when Update to A.L API is Request.")
+                self.add_error("request_remarks", "Request Remarks is required when Update to A.L API is Remark.")
             if not filled("request_comments"):
-                self.add_error("request_comments", "Request Comments is required when Update to A.L API is Request.")
+                self.add_error("request_comments", "Request Comments is required when Update to A.L API is Remark.")
         elif api_value == "Temporary":
             if not has_file("upload_certificate_in_ialert"):
                 self.add_error("upload_certificate_in_ialert",
@@ -236,12 +220,5 @@ class PartBForm(forms.ModelForm):
             if not has_file("upload_certificate_in_ialert_01"):
                 self.add_error("upload_certificate_in_ialert_01",
                                 "Permanent Certificate is required when Update to A.L API is Permanent.")
-        elif api_value == "Temp + Perm":
-            if not has_file("upload_certificate_in_ialert"):
-                self.add_error("upload_certificate_in_ialert",
-                                "Temporary Certificate is required when Update to A.L API is Temp + Perm.")
-            if not has_file("upload_certificate_in_ialert_01"):
-                self.add_error("upload_certificate_in_ialert_01",
-                                "Permanent Certificate is required when Update to A.L API is Temp + Perm.")
 
         return cleaned

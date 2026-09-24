@@ -11,6 +11,7 @@ from django.conf import settings
 from django.utils.timezone import now
 
 logger = logging.getLogger(__name__)
+api_logger = logging.getLogger("api_traffic")
 
 
 class DarbyLookupError(Exception):
@@ -36,16 +37,30 @@ def fetch_vehicle_data(vin):
         raise DarbyLookupError("Darby credentials are not configured.")
 
     headers = {"Authorization": _bearer_header(settings.DARBY_BEARER_TOKEN), "Content-Type": "application/json"}
+    payload = {"vin": vin}
+
+    api_logger.info("OUTGOING Darby lookup — vin=%s url=%s payload=%s", vin, settings.DARBY_SEARCH_URL, payload)
     try:
-        response = requests.post(settings.DARBY_SEARCH_URL, json={"vin": vin},
+        response = requests.post(settings.DARBY_SEARCH_URL, json=payload,
                                   headers=headers, timeout=settings.DARBY_REQUEST_TIMEOUT)
     except requests.RequestException as exc:
+        api_logger.error("OUTGOING Darby lookup FAILED — vin=%s: %s", vin, exc)
         raise DarbyLookupError(f"Darby request failed: {exc}") from exc
 
     if response.status_code == 404:
+        api_logger.info("INCOMING Darby lookup — vin=%s not found (404)", vin)
         return None
     if response.status_code != 200:
+        api_logger.error(
+            "INCOMING Darby lookup REJECTED — vin=%s status=%s body=%s",
+            vin, response.status_code, response.text[:300],
+        )
         raise DarbyLookupError(f"Darby returned HTTP {response.status_code}")
+
+    api_logger.info(
+        "INCOMING Darby lookup OK — vin=%s status=%s body=%s",
+        vin, response.status_code, response.text[:500],
+    )
 
     try:
         data = response.json()

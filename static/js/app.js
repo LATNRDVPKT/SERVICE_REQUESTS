@@ -106,7 +106,14 @@ function wireLiveFilterForm(form) {
             debounceTimer = setTimeout(run, 350);
         });
     });
-    form.addEventListener("submit", (e) => { e.preventDefault(); run(); });
+    form.addEventListener("submit", (e) => {
+        // A button with its own `formaction` (e.g. "Export CSV") means this
+        // submit should navigate the browser there natively, not be
+        // hijacked into another AJAX live-filter refresh.
+        if (e.submitter && e.submitter.hasAttribute("formaction")) return;
+        e.preventDefault();
+        run();
+    });
 }
 document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("form[data-live-filter]").forEach(wireLiveFilterForm);

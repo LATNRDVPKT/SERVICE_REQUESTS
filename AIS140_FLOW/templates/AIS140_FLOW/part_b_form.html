@@ -11,20 +11,29 @@
 
 <div class="card readonly-summary">
     <div class="form-grid readonly-grid">
-        <div class="ro-field"><label>Unique ID</label><div>{{ ticket.unique_id }}</div></div>
-        <div class="ro-field"><label>AL Request ID</label><div>{{ ticket.request_id|default:"-" }}</div></div>
-        <div class="ro-field"><label>Ticket Through</label><div>{{ ticket.ticket_through }}</div></div>
-        <div class="ro-field"><label>Customer Name</label><div>{{ ticket.customer_name }}</div></div>
-        <div class="ro-field"><label>Customer Phone</label><div>{{ ticket.customer_phone }}</div></div>
-        <div class="ro-field"><label>Chassis No</label><div>{{ ticket.vin_no }}</div></div>
-        <div class="ro-field"><label>PSN No</label><div>{{ ticket.psn }}</div></div>
+        <div class="ro-field"><label>Unique ID</label><div>{{ ticket.unique_id|default:"-"  }}</div></div>
+        <div class="ro-field"><label>Date of Request</label><div>{{ ticket.date_of_request|date:"d-m-Y H:i:s" }}</div></div>
+        <div class="ro-field"><label>Attending Engineer</label><div>{{ ticket.attending_engineer|default:"-"  }}</div></div>
+
+        <div class="ro-field"><label>Ticket Through</label><div>{{ ticket.ticket_through|default:"-"  }}</div></div>
+        <div class="ro-field"><label>Request Type</label><div>{{ ticket.request_type|default:"-"  }}</div></div>
+        <div class="ro-field"><label>VIN No</label><div>{{ ticket.vin_no|default:"-"  }}</div></div>
+        <div class="ro-field"><label>PSN No</label><div>{{ ticket.psn|default:"-"  }}</div></div>
+        <div class="ro-field"><label>Customer Name</label><div>{{ ticket.customer_name|default:"-"  }}</div></div>
+        <div class="ro-field"><label>Customer Phone</label><div>{{ ticket.customer_phone|default:"-"  }}</div></div>
+        <div class="ro-field"><label>Customer Alternate No</label><div>{{ ticket.Customer_Alternate_number|default:"-"  }}</div></div>
+        <div class="ro-field"><label>Customer Veh Regn No</label><div>{{ ticket.Cust_veh_Regn_Address|default:"-"  }}</div></div>
+        <div class="ro-field"><label>Customer Email ID</label><div>{{ ticket.Customer_Email_ID|default:"-"  }}</div></div>
+        <div class="ro-field"><label>Engine No</label><div>{{ ticket.engine|default:"-"  }}</div></div>
+        <div class="ro-field"><label>Vehicle Model</label><div>{{ ticket.vehicle_model|default:"-"  }}</div></div>
+        <div class="ro-field"><label>State</label><div>{{ ticket.state|default:"-"  }}</div></div>
+        <div class="ro-field"><label>RTO Name</label><div>{{ ticket.rto_name|default:"-"  }}</div></div>
+        <div class="ro-field"><label>RTO Code</label><div>{{ ticket.rto_code|default:"-"  }}</div></div>
         <div class="ro-field"><label>Dealer Name</label><div>{{ ticket.dealer_name|default:"-" }}</div></div>
-        <div class="ro-field"><label>RTO Name</label><div>{{ ticket.rto_name|default:"-" }}</div></div>
-        <div class="ro-field"><label>State</label><div>{{ ticket.state|default:"-" }}</div></div>
-        <div class="ro-field"><label>Request Type</label><div>{{ ticket.request_type }}</div></div>
-        <div class="ro-field"><label>Assigned Engineer</label><div>{{ ticket.assigned_engineer_email }}</div></div>
-        <div class="ro-field"><label>Attending Engineer</label><div>{{ ticket.attending_engineer|default:"-" }}</div></div>
-        <div class="ro-field"><label>Update to AL API</label><div>{{ ticket.Update_to_AL_API|default:"Not determined yet" }}</div></div>
+        <div class="ro-field"><label>Dealer Code</label><div>{{ ticket.dealer_code|default:"-" }}</div></div>
+        <div class="ro-field"><label>Category</label><div>{{ ticket.category|default:"-" }}</div></div>
+        <div class="ro-field"><label>Request Type</label><div>{{ ticket.remarks|default:"-" }}</div></div>
+</div>
         {% if ticket.completion_date %}
         <div class="ro-field"><label>Completion Date</label><div>{{ ticket.completion_date|date:"d-m-Y H:i:s" }}</div></div>
         {% endif %}

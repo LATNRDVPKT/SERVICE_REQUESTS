@@ -2,10 +2,12 @@
 # AIS140_FLOW — services/workflow.py
 # All the Part-B "on save" business rules live here so views.py stays thin:
 #   REQ-02  Automatic request closure timestamp
-#   REQ-04  Automatic Update_to_AL_API determination
 #   REQ-05  Automatic certificate date/time stamps
 #   REQ-06  Per-field update timestamps
 #   REQ-09  Update-history row creation (now includes attending_engineer)
+# Update_to_AL_API is engineer-selected (Remark / Temporary / Permanent) —
+# no longer auto-derived here; see forms.PartBForm for the matching
+# certificate/remark validation per selected value.
 # =============================================================================
 from django.utils.timezone import now
 
@@ -15,26 +17,6 @@ from AIS140_FLOW.models import AIS140RequestUpdate
 
 def _blank(value):
     return value is None or (isinstance(value, str) and not value.strip())
-
-
-def determine_update_to_al_api(instance):
-    """
-    REQ-04 — priority order: Permanent -> Temporary -> Request -> None.
-    (Collapsed from the earlier Permanent -> Temporary -> D2 -> D1 chain
-    now that D1/D2 have been merged into one request-remarks field.)
-    """
-    permanent_file = bool(instance.upload_certificate_in_ialert_01)
-    temporary_file = bool(instance.upload_certificate_in_ialert)
-
-    if permanent_file and temporary_file:
-        return "Temp + Perm"
-    if permanent_file:
-        return "Permanent"
-    if temporary_file:
-        return "Temporary"
-    if not _blank(instance.request_remarks):
-        return "Request"
-    return ""  # priority 4 — "No update"
 
 
 def apply_part_b_business_rules(instance, previous):
@@ -126,11 +108,6 @@ def apply_part_b_business_rules(instance, previous):
             latest_comments="", remark_datetime=timestamp,
             attending_engineer=instance.attending_engineer,
         ))
-
-    # ------------------------------------------------------------------
-    # REQ-04 — Update_to_AL_API, always recomputed server-side
-    # ------------------------------------------------------------------
-    instance.Update_to_AL_API = determine_update_to_al_api(instance)
 
     # ------------------------------------------------------------------
     # REQ-08 — responsibility, set from whichever event ends up latest

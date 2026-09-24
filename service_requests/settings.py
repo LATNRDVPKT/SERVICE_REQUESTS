@@ -149,8 +149,24 @@ EMAIL_TIMEOUT = int(env("EMAIL_TIMEOUT", "15"))
 # ---------------------------------------------------------------------------
 # iAlert / Darby — credentials from environment only
 # ---------------------------------------------------------------------------
-IALERT_BASE_URL = env("IALERT_BASE_URL", "")
-IALERT_TOKEN_HEADER_VALUE = env("IALERT_TOKEN_HEADER_VALUE", "")
+# crsc_calls -> AL iAlert push (token-generate-then-push flow).
+CRSC_IALERT_LOGIN_URL = env(
+    "CRSC_IALERT_LOGIN_URL",
+    "https://ialertoperation.ashokleyland.com/operation/ialertelite/api/login/generate-token",
+)
+CRSC_IALERT_PUSH_URL = env(
+    "CRSC_IALERT_PUSH_URL",
+    "https://ialertoperation.ashokleyland.com/operation/ialertelite/api/supportticket/support-ticket-status",
+)
+CRSC_IALERT_LOGIN_TOKEN_HEADER_VALUE = env("CRSC_IALERT_LOGIN_TOKEN_HEADER_VALUE", "")
+
+# AIS140_FLOW -> AL iAlert push (same token-generate-then-push flow as
+# crsc_calls above, separate URLs/credential since it's a different AL
+# integration). Fill in the real values once AL provides them.
+AIS140_IALERT_LOGIN_URL = env("AIS140_IALERT_LOGIN_URL", "")
+AIS140_IALERT_PUSH_URL = env("AIS140_IALERT_PUSH_URL", "")
+AIS140_IALERT_LOGIN_TOKEN_HEADER_VALUE = env("AIS140_IALERT_LOGIN_TOKEN_HEADER_VALUE", "")
+
 DARBY_SEARCH_URL = env("DARBY_SEARCH_URL", "https://api.al.drivewithdarby.com/v1/assets/dynamic/search")
 DARBY_BEARER_TOKEN = env("DARBY_BEARER_TOKEN", "")
 DARBY_REQUEST_TIMEOUT = int(env("DARBY_REQUEST_TIMEOUT", "10"))
