@@ -4,10 +4,10 @@
 {% block content %}
 <div class="page-title">{% if record %}Edit Invoice — {{ record.unique_id }}{% else %}New Invoice{% endif %}</div>
 
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" id="billing-invoice-form">
     {% csrf_token %}
     <div class="card">
-        <div class="form-grid">
+        <div class="form-grid" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px 14px;">
             {% for field in form %}
             <div class="field {% if field.errors %}has-error{% endif %}">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
@@ -22,4 +22,115 @@
         <a href="{% url 'billing_real_time_page' %}" class="btn secondary">Back to Dashboard</a>
     </div>
 </form>
+
+{% for field_name, pair in suggestion_fields.items %}
+<datalist id="{{ pair.0 }}">
+    {% for value in pair.1 %}<option value="{{ value }}">{% endfor %}
+</datalist>
+{% endfor %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    const form = document.getElementById("billing-invoice-form");
+    if (!form) return;
+
+    const byId = (name) => document.getElementById("id_" + name);
+    const gstInput = byId("total_invoice_value_with_gst");
+    const withoutGstInput = byId("invoice_value_without_gst");
+    const creditedInput = byId("credited_amount");
+    const tdsInput = byId("tds_amount");
+    const gapInput = byId("gap");
+    const paymentStatusSelect = byId("payment_status");
+    const invoiceDateInput = byId("invoice_date");
+    const locationInput = byId("location");
+    const itemSubCategoryInput = byId("item_sub_category");
+    const theoreticalDueDateInput = byId("theoretical_payment_due_date");
+    const customerNameInput = byId("customer_name");
+    const grnDateInput = byId("actual_grn_delivery_date");
+    const dueDateInput = byId("due_date");
+
+    function calcInvoiceValueWithoutGst() {
+        if (!gstInput || !withoutGstInput) return;
+        const gstValue = parseFloat(gstInput.value);
+        withoutGstInput.value = isNaN(gstValue) ? "" : (gstValue / 1.18).toFixed(2);
+    }
+
+    function calcGap() {
+        if (!gstInput || !gapInput) return;
+        const gstValue = parseFloat(gstInput.value) || 0;
+        const credited = parseFloat(creditedInput.value) || 0;
+        const tds = parseFloat(tdsInput.value) || 0;
+        gapInput.value = (gstValue - credited - tds).toFixed(2);
+        updatePaymentStatus();
+    }
+
+    function updatePaymentStatus() {
+        if (!paymentStatusSelect) return;
+        const gap = parseFloat(gapInput.value) || 0;
+        const credited = parseFloat(creditedInput.value) || 0;
+        paymentStatusSelect.value = (gap === 0 && credited > 0) ? "Received" : "Pending";
+    }
+
+    // Same business rule as billing/services/due_date.py::calculate_theoretical_payment_due_date
+    function theoreticalDueDays(location, itemSubCategory) {
+        const loc = (location || "").trim().toLowerCase();
+        const item = (itemSubCategory || "").trim().toLowerCase();
+        if (loc === "alcob" && item === "hardware") return 18;
+        if (item === "software") return 17;
+        if (item === "sim") return 32;
+        if (item === "nre") return 17;
+        if (["chennai", "ennore", "hosur", "hosur 1", "hosur 2", "vvc"].includes(loc) && item === "hardware") return 52;
+        if (["pant nagar", "alwar"].includes(loc) && item === "hardware") return 55;
+        return 0;
+    }
+
+    function addDays(dateStr, days) {
+        const d = new Date(dateStr + "T00:00:00");
+        d.setDate(d.getDate() + days);
+        const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+    }
+
+    function calcTheoreticalDueDate() {
+        if (!invoiceDateInput || !theoreticalDueDateInput) return;
+        const days = theoreticalDueDays(locationInput.value, itemSubCategoryInput.value);
+        if (!invoiceDateInput.value || !days) { theoreticalDueDateInput.value = ""; return; }
+        theoreticalDueDateInput.value = addDays(invoiceDateInput.value, days);
+        calcDueDate();
+    }
+
+    // Same business rule as billing/services/due_date.py::calculate_due_date
+    const GRN_DUE_DATE_RULES = {
+        "ashok leyland limited|hardware": 45, "switch|hardware": 45,
+        "ashok leyland limited|software": 15, "royal enfield|hardware": 45,
+        "ashok leyland limited|sim": 15, "ashok leyland limited|nre": 30,
+    };
+
+    function calcDueDate() {
+        if (!grnDateInput || !dueDateInput) return;
+        if (!grnDateInput.value) { dueDateInput.value = theoreticalDueDateInput.value || ""; return; }
+        const key = `${(customerNameInput.value || "").trim().toLowerCase()}|${(itemSubCategoryInput.value || "").trim().toLowerCase()}`;
+        const days = GRN_DUE_DATE_RULES[key];
+        dueDateInput.value = days ? addDays(grnDateInput.value, days) : (theoreticalDueDateInput.value || "");
+    }
+
+    if (gstInput) gstInput.addEventListener("input", () => { calcInvoiceValueWithoutGst(); calcGap(); });
+    if (creditedInput) creditedInput.addEventListener("input", calcGap);
+    if (tdsInput) tdsInput.addEventListener("input", calcGap);
+    [invoiceDateInput, locationInput, itemSubCategoryInput].forEach((el) => {
+        if (el) {
+            el.addEventListener("change", calcTheoreticalDueDate);
+            el.addEventListener("input", calcTheoreticalDueDate);
+        }
+    });
+    [customerNameInput, grnDateInput].forEach((el) => {
+        if (el) {
+            el.addEventListener("change", calcDueDate);
+            el.addEventListener("input", calcDueDate);
+        }
+    });
+})();
+</script>
 {% endblock %}

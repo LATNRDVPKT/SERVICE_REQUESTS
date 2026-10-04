@@ -1,14 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Billing — Real-Time Dashboard{% endblock %}
 
+{% block extra_head %}
+{% load static %}<script src="{% static 'vendor/chart.umd.min.js' %}"></script>
+{% endblock %}
+
 {% block content %}
 <div class="page-title">Billing — Real-Time Dashboard</div>
 
 <form method="get" class="toolbar" data-live-filter data-live-target="#billing-results"
       action="{% url 'billing_real_time_page' %}">
-    <textarea class="form-control searchbox" name="invoice_no" rows="1"
+    <textarea class="form-control searchbox" name="search" rows="1"
               title="Search Invoice No or Unique ID — paste multiple values (one per line, or comma/space separated) to bulk-search"
-              placeholder="Search Invoice No or Unique ID — paste a list to bulk-search">{{ invoice_no }}</textarea>
+              placeholder="Search Invoice No or Unique ID — paste a list to bulk-search">{{ search }}</textarea>
     <select class="form-control" name="customer_name">
         <option value="">All Customers</option>
         {% for c in distinct_customers %}{% if c %}<option value="{{ c }}" {% if c == customer_name %}selected{% endif %}>{{ c }}</option>{% endif %}{% endfor %}
@@ -37,4 +41,47 @@
 <div id="billing-results">
     {% include "billing/partials/results.html" %}
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+window._billingCharts = { customerValue: null, customerQty: null, productValue: null };
+
+const billingPalette = ["#1b2a4a", "#2f6f4f", "#a13a2d", "#1b4a8a", "#8a5a1f", "#5a2d8a", "#2d8a7a", "#8a2d6a"];
+
+function billingColors(count) {
+    const colors = [];
+    for (let i = 0; i < count; i++) colors.push(billingPalette[i % billingPalette.length]);
+    return colors;
+}
+
+function renderBillingCharts() {
+    const holder = document.getElementById("billing-chart-data-holder");
+    if (!holder || typeof Chart === "undefined") return;
+    let stats;
+    try { stats = JSON.parse(holder.dataset.stats); } catch (e) { return; }
+
+    Object.values(window._billingCharts).forEach((chart) => { if (chart) chart.destroy(); });
+
+    const makePie = (canvasId, data) => {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return null;
+        return new Chart(ctx, {
+            type: "pie",
+            data: {
+                labels: data.labels,
+                datasets: [{ data: data.values, backgroundColor: billingColors(data.labels.length) }],
+            },
+            options: { responsive: true, plugins: { legend: { position: "bottom" } } },
+        });
+    };
+
+    window._billingCharts.customerValue = makePie("billing-customer-value-chart", stats.customer_value);
+    window._billingCharts.customerQty = makePie("billing-customer-qty-chart", stats.customer_qty);
+    window._billingCharts.productValue = makePie("billing-product-value-chart", stats.product_value);
+}
+
+document.addEventListener("DOMContentLoaded", renderBillingCharts);
+document.getElementById("billing-results").addEventListener("live-filter-updated", renderBillingCharts);
+</script>
 {% endblock %}

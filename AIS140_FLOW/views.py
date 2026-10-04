@@ -13,15 +13,14 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
 from django.db.models.functions import Upper
-from django.http import HttpResponse, JsonResponse, Http404
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.timezone import now, make_aware, is_naive
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
 import datetime
 
+from accounts.models import UserProfile
 from core.decorators import admin_required
 from .constants import (
     TERMINAL_STATUSES, COMPLETION_DATE_TRIGGER_STATUSES, TEMP_CERT_DEFAULT_YES_STATES,
@@ -32,7 +31,7 @@ from .models import AIS140Request
 from .services.darby import run_darby_lookup_and_save
 from .services.email_utils import (
     send_part_a_assignment_email, send_request_remark_email,
-    send_completion_email, send_remarks_updated_email,
+    send_completion_email,
 )
 from .services.ialert import push_update_to_ialert, IAlertPushError
 from .services.latest_update import get_latest_ticket_update
@@ -45,6 +44,13 @@ logger = logging.getLogger(__name__)
 api_logger = logging.getLogger("api_traffic")
 
 
+def _engineer_choices():
+    return [
+        (p.display_name, p.display_name)
+        for p in UserProfile.objects.filter(role="engineer").order_by("display_name")
+    ]
+
+
 # =============================================================================
 # Part-A — Manager ticket creation / edit
 # =============================================================================
@@ -54,7 +60,7 @@ def part_a_form(request, ticket_id=None):
     is_new = instance is None
 
     if request.method == "POST":
-        form = ManagerForm(request.POST, instance=instance)
+        form = ManagerForm(request.POST, instance=instance, engineer_choices=_engineer_choices())
         if form.is_valid():
             ticket = form.save(commit=False)
             if is_new:
@@ -62,6 +68,9 @@ def part_a_form(request, ticket_id=None):
                 ticket.ticket_through = ticket.ticket_through or "Manual"
                 if (ticket.state or "").strip().upper() in TEMP_CERT_DEFAULT_YES_STATES:
                     ticket.temp_cert_reqd = "Yes"
+                # Danlaw owns every ticket from the moment it's created until
+                # an engineer/manager update says otherwise.
+                ticket.responsibility = "DANLAW"
             previous_engineer = instance.assigned_engineer_email if instance else None
             compute_tats(ticket)
             ticket.save()
@@ -82,7 +91,7 @@ def part_a_form(request, ticket_id=None):
         else:
             _flash_form_errors(request, form)
     else:
-        form = ManagerForm(instance=instance)
+        form = ManagerForm(instance=instance, engineer_choices=_engineer_choices())
 
     return render(request, "AIS140_FLOW/part_a_form.html", {
         "form": form, "ticket": instance, "is_new": is_new,
@@ -116,9 +125,11 @@ def part_b_form(request, ticket_id):
             compute_tats(updated)
 
             is_admin = _user_role(request.user) == "admin"
+            ticket_through = (previous.ticket_through or "").strip().lower()
+            is_al_api_ticket = bool(previous.request_id) and ticket_through in ("a.l api", "al api")
             try:
                 with transaction.atomic():
-                    if previous.request_id and is_admin:
+                    if is_al_api_ticket and is_admin:
                         push_update_to_ialert(updated, form_files=request.FILES)
                     updated.save()
                     write_history_rows(updated, history_rows)
@@ -352,141 +363,10 @@ def download_csv(request):
 
 
 # =============================================================================
-# External API intake (Ashok Leyland / iAlert)
+# External API intake (Ashok Leyland / iAlert) — moved to api_views.py
+# (DRF APIViews: AIS140TicketCreateAPIView, AIS140RemarksUpdateAPIView),
+# wired directly in urls.py.
 # =============================================================================
-REQUIRED_API_FIELDS = [
-    "request_id", "request_date", "state", "chassis_number", "engine_no", "obu_id",
-    "vehicle_reg_no", "vehicle_model", "customer_name", "customer_mobile_number",
-    "pan_no", "aadhar_no", "mfg_year", "rto_name", "rto_code", "dealer_name", "dealer_code",
-]
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_create_ais140_ticket(request):
-    api_logger.info(
-        "INCOMING api_create_ais140_ticket — from=%s bytes=%s",
-        request.META.get("REMOTE_ADDR"), len(request.body or b""),
-    )
-    try:
-        data = json.loads(request.body.decode("utf-8"))
-    except (ValueError, UnicodeDecodeError) as exc:
-        api_logger.error("INCOMING api_create_ais140_ticket — invalid JSON body: %s", exc)
-        return JsonResponse({"error": "Invalid JSON body."}, status=400)
-
-    missing = [f for f in REQUIRED_API_FIELDS if not data.get(f)]
-    if missing:
-        api_logger.error(
-            "INCOMING api_create_ais140_ticket — missing fields=%s request_id=%s",
-            missing, data.get("request_id"),
-        )
-        return JsonResponse({"error": "Missing required fields.", "fields": missing}, status=400)
-
-    created_at = now()
-    ticket = AIS140Request.objects.create(
-        request_id=data["request_id"],
-        date_of_request=created_at,
-        Customer_assigned_date=created_at,
-        D1_TAT="00:00:00",
-        state=data["state"],
-        vin_no=data["chassis_number"],
-        engine=data["engine_no"],
-        psn=data["obu_id"],
-        vehicle_no=data["vehicle_reg_no"],
-        vehicle_model=data["vehicle_model"],
-        customer_name=data["customer_name"],
-        customer_phone=data["customer_mobile_number"],
-        Customer_mobile_number=data["customer_mobile_number"],
-        Customer_Alternate_number=data.get("customer_alternate_number"),
-        Customer_Email_ID=data.get("customer_email_id"),
-        Cust_veh_Regn_Address=data.get("cust_veh_regn_address"),
-        Cust_veh_Regn_Pincode=data.get("cust_veh_regn_pincode"),
-        pan_card=data["pan_no"],
-        aadhar_card=data["aadhar_no"],
-        manufacturing_year=data["mfg_year"],
-        request_type=data.get("ais140_type"),
-        AIS140_Type=(data.get("ais140_type") or "").strip().title(),
-        rto_name=data["rto_name"],
-        rto_code=data["rto_code"],
-        dealer_name=data["dealer_name"],
-        dealer_code=data["dealer_code"],
-        Dealer_Contact=data.get("dealer_contact"),
-        Dealer_Location=data.get("dealer_location"),
-        Dealer_mail=data.get("dealer_email_id"),
-        TSM_mail=data.get("tsm_email_id"),
-        Ialert_Email_ID=data.get("ialert_email_id"),
-        sos_fitment_date=data.get("sos_confirmed_on"),
-        zone=data.get("zoneName"),
-        category=data.get("category"),
-        ticket_through="A.L API",
-        assigned_engineer_email="--",
-        temp_cert_reqd=(
-            "Yes" if (data["state"] or "").strip().upper() in TEMP_CERT_DEFAULT_YES_STATES else "No"
-        ),
-    )
-
-    # REQ-13 — Darby auto-lookup right after ticket creation
-    run_darby_lookup_and_save(ticket)
-
-    api_logger.info(
-        "INCOMING api_create_ais140_ticket OK — request_id=%s unique_id=%s",
-        ticket.request_id, ticket.unique_id,
-    )
-    return JsonResponse({"unique_id": ticket.unique_id, "id": ticket.id}, status=201)
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_update_ais140_remarks(request):
-    api_logger.info(
-        "INCOMING api_update_ais140_remarks — from=%s bytes=%s",
-        request.META.get("REMOTE_ADDR"), len(request.body or b""),
-    )
-    try:
-        data = json.loads(request.body.decode("utf-8"))
-    except (ValueError, UnicodeDecodeError) as exc:
-        api_logger.error("INCOMING api_update_ais140_remarks — invalid JSON body: %s", exc)
-        return JsonResponse({"error": "Invalid JSON body."}, status=400)
-
-    api_logger.info("Payload Re-Update from A.L: %s", data)
-
-    request_id = data.get("request_id")
-    vin_no = (data.get("vin_no") or "").strip()
-    if not request_id:
-        api_logger.error("INCOMING api_update_ais140_remarks — missing request_id")
-        return JsonResponse({"error": "request_id is required."}, status=400)
-
-    try:
-        ticket = AIS140Request.objects.get(request_id=request_id)
-    except AIS140Request.DoesNotExist:
-        api_logger.error("INCOMING api_update_ais140_remarks — unknown request_id=%s", request_id)
-        raise Http404("No ticket found for that request_id.")
-
-    # request_id is the authoritative match key — vin_no is only cross-checked
-    # for an audit trail, never used to block the update.
-    if vin_no and ticket.vin_no and vin_no.upper() != ticket.vin_no.strip().upper():
-        api_logger.warning(
-            "INCOMING api_update_ais140_remarks — vin_no mismatch request_id=%s payload_vin=%s ticket_vin=%s",
-            request_id, vin_no, ticket.vin_no,
-        )
-
-    ticket.AL_remarks = data.get("remarks", ticket.AL_remarks)
-    ticket.AL_comments = data.get("comments", ticket.AL_comments)
-    ticket.al_remarks_updated_at = now()
-    ticket.save(update_fields=["AL_remarks", "AL_comments", "al_remarks_updated_at"])
-
-    write_history_rows(ticket, [{
-        "source_field": "al_remarks", "latest_remark": ticket.AL_remarks,
-        "latest_comments": ticket.AL_comments, "remark_datetime": ticket.al_remarks_updated_at,
-        "attending_engineer": ticket.attending_engineer,
-    }])
-
-    send_remarks_updated_email(ticket)
-    api_logger.info(
-        "INCOMING api_update_ais140_remarks OK — request_id=%s unique_id=%s",
-        request_id, ticket.unique_id,
-    )
-    return JsonResponse({"status": "ok", "unique_id": ticket.unique_id})
 
 
 @login_required

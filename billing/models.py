@@ -80,6 +80,7 @@ class BillingData(models.Model):
     contact_mail_id = models.EmailField(null=True, blank=True)
     engineer = models.CharField(max_length=100, null=True, blank=True)
     order = models.ForeignKey(OrderDetail, on_delete=models.SET_NULL, null=True, blank=True)
+    remarks = models.CharField(max_length=500, null=True, blank=True)
 
     # Fields tracked for the eye-icon change history (see services/history.py)
     TRACKED_FIELDS = [
@@ -103,7 +104,7 @@ class BillingData(models.Model):
         return EMAIL_MAPPING.get((self.customer_name, self.location), ("", ""))
 
     def save(self, *args, **kwargs):
-        from .services.due_date import calculate_theoretical_payment_due_date
+        from .services.due_date import calculate_theoretical_payment_due_date, calculate_due_date
 
         if not self.unique_id:
             current = now()
@@ -125,6 +126,11 @@ class BillingData(models.Model):
         self.theoretical_payment_due_date = calculate_theoretical_payment_due_date(
             self.invoice_date, self.location, self.item_sub_category
         ) or self.theoretical_payment_due_date
+
+        self.due_date = calculate_due_date(
+            self.customer_name, self.item_sub_category, self.actual_grn_delivery_date,
+            self.theoretical_payment_due_date,
+        ) or self.due_date
 
         if not self.due_emails or not self.shipment_emails:
             due_emails, shipment_emails = self.get_email_mapping()

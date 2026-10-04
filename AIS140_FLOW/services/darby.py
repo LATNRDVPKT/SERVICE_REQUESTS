@@ -52,7 +52,7 @@ def fetch_device_data(vin_no):
         "Authorization": _bearer_header(settings.DARBY_BEARER_TOKEN),
         "Content-Type": "application/json",
     }
-    payload = {"vin": vin_no}
+    payload = {"assetType": "DEVICE", "filters": {"vin": [vin_no]}}
 
     api_logger.info("OUTGOING Darby lookup — vin=%s url=%s", vin_no, settings.DARBY_SEARCH_URL)
     try:
@@ -83,10 +83,10 @@ def fetch_device_data(vin_no):
     except ValueError as exc:
         raise DarbyLookupError(f"Darby returned non-JSON response: {exc}") from exc
 
-    # Darby's exact response shape should be confirmed and this extraction
-    # adjusted to match it; the keys below are the placeholders agreed in
-    # the specification.
-    record = data.get("data") or data.get("result") or data
+    # Darby returns {"results": [ {...} ]} for the filters-based search —
+    # take the first match for this VIN, if any.
+    results = data.get("results") or []
+    record = results[0] if results else None
     if not record:
         return None
 

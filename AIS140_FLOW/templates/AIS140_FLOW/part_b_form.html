@@ -32,7 +32,7 @@
         <div class="ro-field"><label>Dealer Name</label><div>{{ ticket.dealer_name|default:"-" }}</div></div>
         <div class="ro-field"><label>Dealer Code</label><div>{{ ticket.dealer_code|default:"-" }}</div></div>
         <div class="ro-field"><label>Category</label><div>{{ ticket.category|default:"-" }}</div></div>
-        <div class="ro-field"><label>Request Type</label><div>{{ ticket.remarks|default:"-" }}</div></div>
+        <div class="ro-field"><label>AIS140 Type</label><div>{{ ticket.AIS140_Type|default:"-" }}</div></div>
 </div>
         {% if ticket.completion_date %}
         <div class="ro-field"><label>Completion Date</label><div>{{ ticket.completion_date|date:"d-m-Y H:i:s" }}</div></div>

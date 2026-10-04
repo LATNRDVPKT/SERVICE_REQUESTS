@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Trip Analysis — Upload CSV{% endblock %}
+
+{% block content %}
+<div class="page-title">Trip Analysis <span class="page-title-hint">— upload a packet-log CSV, get a per-trip latency/packet summary</span></div>
+
+<div class="card" style="max-width: 640px;">
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="field">
+            <label for="csv_file">CSV file</label>
+            <input class="form-control-file" type="file" name="csv_file" id="csv_file" accept=".csv" required>
+        </div>
+        <div class="btn-row">
+            <button type="submit" class="btn">Upload &amp; Generate Report</button>
+        </div>
+    </form>
+
+    {% if download_url %}
+    <p style="margin-top: 14px;">
+        Report ready — <a href="{{ download_url }}" target="_blank" class="link-btn">Download Excel</a>
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .api_views import CRSCTicketIntakeAPIView
 
 urlpatterns = [
     path("manager_form/", views.manager_form, name="crsc_manager_form"),
@@ -11,4 +12,6 @@ urlpatterns = [
 
     path("export/", views.export_page, name="crsc_export_page"),
     path("download-csv/", views.download_csv, name="crsc_download_csv"),
+
+    path("api/create-ticket/", CRSCTicketIntakeAPIView.as_view(), name="crsc_api_create_ticket"),
 ]

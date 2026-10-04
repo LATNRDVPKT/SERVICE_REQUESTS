@@ -1,12 +1,40 @@
-<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1f242e;">
-    <p>Dear Customer,</p>
-    <p>Your call <strong>{{ call.unique_id }}</strong> has been updated to status <strong>{{ call.call_status }}</strong>.</p>
-    <table cellpadding="6" style="border-collapse: collapse;">
-        <tr><td><strong>Reference ID</strong></td><td>{{ call.unique_id }}</td></tr>
-        <tr><td><strong>Vehicle</strong></td><td>{{ call.vin }}</td></tr>
-        <tr><td><strong>Status</strong></td><td>{{ call.call_status }}</td></tr>
-        <tr><td><strong>Final Action Taken</strong></td><td>{{ call.final_action_taken|default:"" }}</td></tr>
-    </table>
-    <p>If you have any questions, feel free to contact us.</p>
-    <p style="color:#5a6472; font-size:12px;">This is an automated notification from the CRSC Calls system.</p>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Call {{ call.call_status }} Notification</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 14px; color: #1f242e; }
+        table { border-collapse: collapse; width: 100%; max-width: 640px; }
+        th { text-align: left; background-color: rgb(240,240,240); padding: 8px; width: 40%; }
+        td { padding: 8px; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+    <div>
+        <h2>Dear Customer,</h2>
+        <p>Your call <strong>{{ call.unique_id }}</strong> has been updated to status <strong>{{ call.call_status }}</strong>.</p>
+        <table border="1" cellpadding="5" cellspacing="0">
+            <tbody>
+                <tr><th>Ticket Number</th><td>{{ call.unique_id }}</td></tr>
+                <tr><th>VIN (Chassis No.)</th><td>{{ call.vin }}</td></tr>
+                <tr><th>Call Status</th><td>{{ call.call_status }}</td></tr>
+                <tr><th>Final Action Taken</th><td>{{ call.final_action_taken|default:"" }}</td></tr>
+                <tr><th>Date of Closure</th><td>{{ call.date_of_closure|default:"" }}</td></tr>
+            </tbody>
+        </table>
+
+        <p>If you have any questions, feel free to contact us.</p>
+        <div>
+            <br>
+            <b>Danlaw Technologies India Limited</b><br>
+            Email : crscdanlaw@danlawtechnologies.com<br>
+            Support Team : 6303908940 / 9240257885<br>
+            Support: 09:00AM to 05:30PM, Monday to Saturday<br>
+            Thank you
+            {% if logo_base64 %}<br><img src="data:image/png;base64,{{ logo_base64 }}" alt="Danlaw Logo" style="width:150px;height:auto;">{% endif %}
+        </div>
+    </div>
+</body>
+</html>

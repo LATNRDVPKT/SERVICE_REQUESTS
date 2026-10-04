@@ -77,18 +77,18 @@ def send_customer_email(call):
     )
 
 
-def send_fir_approval_email(call, recipients):
+def send_fir_approval_email(call, recipients, part_b_url=None):
     if not recipients:
         return False
     return _send(
         subject=f"[CRSC] FIR Approval Requested — {call.unique_id}",
         template_name="crsc_calls/emails/fir_approval_email.html",
-        context={"call": call},
+        context={"call": call, "part_b_url": part_b_url},
         to=recipients,
     )
 
 
-def send_remark_updated_email(call):
+def send_remark_updated_email(call, part_b_url=None):
     """Sent to the assigned engineer every time a new follow-up round
     (Follow-Up Remark/Comment) is submitted, so they always have a record
     of what was just logged against their call."""
@@ -97,7 +97,7 @@ def send_remark_updated_email(call):
     return _send(
         subject=f"{call.unique_id} — Follow-Up Updated ({call.follow_up_level})",
         template_name="crsc_calls/emails/remark_updated_email.html",
-        context={"call": call},
+        context={"call": call, "part_b_url": part_b_url},
         to=[call.submitted_to_email], cc=CRSC_ASSIGNMENT_CC,
     )
 
@@ -117,6 +117,22 @@ def send_closure_email(call):
         template_name="crsc_calls/emails/closure_email.html",
         context={"call": call},
         to=recipients, cc=cc,
+    )
+
+
+def send_ialert_update_email(call, al_remark, al_comments="", part_b_url=None):
+    """Sent when AL pushes a "Contact Update" or reassignment remark via the
+    ticket-intake API (see api_views.py) — goes to the assigned engineer if
+    one is set yet, always CC'd to the internal assignment list, so an
+    AL-side push is never silent."""
+    recipients = [call.submitted_to_email] if call.submitted_to_email else []
+    if not recipients and not CRSC_ASSIGNMENT_CC:
+        return False
+    return _send(
+        subject=f"{call.unique_id} — AL iAlert Update",
+        template_name="crsc_calls/emails/ialert_update_email.html",
+        context={"call": call, "al_remark": al_remark, "al_comments": al_comments, "part_b_url": part_b_url},
+        to=recipients or list(CRSC_ASSIGNMENT_CC), cc=CRSC_ASSIGNMENT_CC if recipients else [],
     )
 
 

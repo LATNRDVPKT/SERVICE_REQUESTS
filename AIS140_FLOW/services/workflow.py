@@ -2,12 +2,10 @@
 # AIS140_FLOW — services/workflow.py
 # All the Part-B "on save" business rules live here so views.py stays thin:
 #   REQ-02  Automatic request closure timestamp
+#   REQ-04  Automatic Update_to_AL_API determination
 #   REQ-05  Automatic certificate date/time stamps
 #   REQ-06  Per-field update timestamps
 #   REQ-09  Update-history row creation (now includes attending_engineer)
-# Update_to_AL_API is engineer-selected (Remark / Temporary / Permanent) —
-# no longer auto-derived here; see forms.PartBForm for the matching
-# certificate/remark validation per selected value.
 # =============================================================================
 from django.utils.timezone import now
 
@@ -17,6 +15,24 @@ from AIS140_FLOW.models import AIS140RequestUpdate
 
 def _blank(value):
     return value is None or (isinstance(value, str) and not value.strip())
+
+
+def determine_update_to_al_api(instance):
+    """
+    REQ-04 — priority order: Permanent -> Temporary -> Remark -> None.
+    Permanent is triggered by EITHER certificate file
+    (upload_certificate_in_ialert_01 OR _02) being present.
+    """
+    permanent_file = bool(instance.upload_certificate_in_ialert_01) or bool(instance.upload_certificate_in_ialert_02)
+    temporary_file = bool(instance.upload_certificate_in_ialert)
+
+    if permanent_file:
+        return "Permanent"
+    if temporary_file:
+        return "Temporary"
+    if not _blank(instance.request_remarks):
+        return "Remark"
+    return ""  # priority 4 — "No update"
 
 
 def apply_part_b_business_rules(instance, previous):

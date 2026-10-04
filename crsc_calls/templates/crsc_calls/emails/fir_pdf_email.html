@@ -1,12 +1,40 @@
-<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1f242e;">
-    <p>Hello,</p>
-    <p>Call <strong>{{ call.unique_id }}</strong> has reached status <strong>{{ call.call_status }}</strong>.
-       The FIR summary is attached as a PDF.</p>
-    <table cellpadding="6" style="border-collapse: collapse;">
-        <tr><td><strong>VIN</strong></td><td>{{ call.vin }}</td></tr>
-        <tr><td><strong>Engineer Recommendation</strong></td><td>{{ call.engineer_recommendation }}</td></tr>
-        <tr><td><strong>Device to be Sent</strong></td><td>{{ call.device_to_be_sent }}</td></tr>
-        <tr><td><strong>Dealer Address</strong></td><td>{{ call.dealer_address }}</td></tr>
-    </table>
-    <p style="color:#5a6472; font-size:12px;">This is an automated notification from the CRSC Calls system.</p>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FIR Summary</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 14px; color: #1f242e; }
+        table { border-collapse: collapse; width: 100%; max-width: 640px; }
+        th { text-align: left; background-color: rgb(240,240,240); padding: 8px; width: 40%; }
+        td { padding: 8px; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+    <div>
+        <h2>Call {{ call.call_status }} Notification</h2>
+        <p>Call <strong>{{ call.unique_id }}</strong> has reached status <strong>{{ call.call_status }}</strong>. The FIR summary is attached as a PDF.</p>
+        <table border="1" cellpadding="5" cellspacing="0">
+            <tbody>
+                <tr><th>Ticket Number</th><td>{{ call.unique_id }}</td></tr>
+                <tr><th>VIN</th><td>{{ call.vin }}</td></tr>
+                <tr><th>Complaint Assigned To</th><td>{{ call.complaint_assigned_to|default:"" }}</td></tr>
+                <tr><th>Engineer Recommendation</th><td>{{ call.engineer_recommendation|default:"" }}</td></tr>
+                <tr><th>Device to be Sent</th><td>{{ call.device_to_be_sent|default:"" }}</td></tr>
+                <tr><th>Dealer Address</th><td>{{ call.dealer_address|default:"" }}</td></tr>
+            </tbody>
+        </table>
+
+        <div>
+            <br>
+            <b>Danlaw Technologies Service &amp; Support Team</b><br>
+            Email: crscdanlaw@danlawtechnologies.com<br>
+            Support Team - 6303908940 / 04431436579<br>
+            Online support: 09:00AM to 05:30PM, Monday to Saturday<br>
+            Thank you
+            {% if logo_base64 %}<br><img src="data:image/png;base64,{{ logo_base64 }}" alt="Danlaw Logo" style="width:150px;height:auto;">{% endif %}
+        </div>
+    </div>
+</body>
+</html>

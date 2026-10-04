@@ -3,6 +3,7 @@
 # Every view here is admin-only (core.decorators.admin_required).
 # =============================================================================
 import csv
+import json
 import re
 
 from django.contrib import messages
@@ -13,6 +14,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.decorators import admin_required
+from .services.dashboard_stats import build_dashboard_stats
 
 BULK_TOKEN_SPLIT_RE = re.compile(r"[\s,;]+")
 
@@ -26,7 +28,7 @@ def _parse_bulk_tokens(raw):
     tokens = {t.strip().upper() for t in BULK_TOKEN_SPLIT_RE.split(raw) if t.strip()}
     return sorted(tokens)
 
-from .forms import BillingDataForm
+from .forms import BillingDataForm, SUGGESTION_FIELDS
 from .models import BillingData
 from .services.history import diff_and_record
 
@@ -79,13 +81,15 @@ def add_billing_data(request, pk=None):
     else:
         form = BillingDataForm(instance=instance)
 
-    return render(request, "billing/invoice_form.html", {"form": form, "record": instance})
+    return render(request, "billing/invoice_form.html", {
+        "form": form, "record": instance, "suggestion_fields": SUGGESTION_FIELDS,
+    })
 
 
 def _apply_filters(request, qs):
     """Shared by the dashboard and the CSV export so a download always
     matches whatever's currently filtered on screen."""
-    search = (request.GET.get("invoice_no") or "").strip()
+    search = (request.GET.get("search") or "").strip()
     customer_name = request.GET.get("customer_name")
     location = request.GET.get("location")
     payment_status = request.GET.get("payment_status")
@@ -129,7 +133,7 @@ def real_time_page(request):
     qs = BillingData.objects.all().order_by("-invoice_date")
     qs = _apply_filters(request, qs)
 
-    invoice_no = (request.GET.get("invoice_no") or "").strip()
+    search = (request.GET.get("search") or "").strip()
     customer_name = request.GET.get("customer_name")
     location = request.GET.get("location")
     payment_status = request.GET.get("payment_status")
@@ -142,6 +146,7 @@ def real_time_page(request):
         total_value=Sum("total_invoice_value_with_gst"),
         total_qty=Sum("qty"),
     )
+    stats = build_dashboard_stats(qs)
 
     paginator = Paginator(qs, 25)
     page_obj = paginator.get_page(request.GET.get("page"))
@@ -149,8 +154,10 @@ def real_time_page(request):
     context = {
         "page_obj": page_obj,
         "totals": totals,
+        "stats": stats,
+        "stats_json": json.dumps(stats),
         "filter_qs": request.GET.urlencode(),
-        "invoice_no": invoice_no or "", "customer_name": customer_name or "",
+        "search": search, "customer_name": customer_name or "",
         "location": location or "", "payment_status": payment_status or "",
         "from_date": from_date or "", "to_date": to_date or "",
         "due_date_from": due_date_from or "", "due_date_to": due_date_to or "",

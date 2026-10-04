@@ -14,6 +14,14 @@
         <h3>CRSC Calls</h3>
         <p>Customer complaint intake, engineer follow-up (D1/D2/D3), FIR approval workflow.</p>
     </a>
+    <a class="module-card" href="{% url 'data_search' %}">
+        <h3>7 Days Analysis</h3>
+        <p>Live Darby asset lookup by VIN, PSN or ICCID — device details plus a 7-day packet/latency summary.</p>
+    </a>
+    <a class="module-card" href="{% url 'trip_app:upload' %}">
+        <h3>Trip Analysis</h3>
+        <p>Upload a packet-log CSV and get a per-trip, per-time-range latency and packet summary as an Excel report.</p>
+    </a>
     {% if user.profile.role == 'admin' %}
     <a class="module-card" href="{% url 'billing_real_time_page' %}">
         <h3>Billing</h3>

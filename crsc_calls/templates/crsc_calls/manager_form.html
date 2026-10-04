@@ -20,18 +20,13 @@
             </div>
             {% endif %}
             {% for field in form %}
-                {% if field.name|in_list:"date_of_complaint,complaint_raised_from_location,customer_raised_issue,complaint_raised,complaint_raised_by,contact_number,customer_mail_id,vehicle_avl_in_workshop,complaint_raised_through,vin,psn,complaint_assigned_to,ialert_remarks,upload_file,call_type,ialert_ticket_no" %}
+                {% if field.name|in_list:"date_of_complaint,request_received_timestamp,complaint_raised_from_location,customer_raised_issue,complaint_raised,complaint_raised_by,contact_number,customer_mail_id,vehicle_avl_in_workshop,complaint_raised_through,vin,psn,complaint_assigned_to,ialert_remarks,upload_file,call_type,ialert_ticket_no" %}
                     {% include "crsc_calls/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
-            {% if call.al_updated_contact_no %}
-            <div class="field">
-                <label>AL Updated Contact No</label>
-                <input type="text" class="form-control" value="{{ call.al_updated_contact_no }}" readonly>
-            </div>
-            {% endif %}
+
             {% for field in form %}
-                {% if field.name|in_list:"updated_contact_no,request_received_timestamp" %}
+                {% if field.name|in_list:"updated_contact_no" %}
                     {% include "crsc_calls/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}

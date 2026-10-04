@@ -10,6 +10,8 @@ urlpatterns = [
     path("ais140/", include("AIS140_FLOW.urls")),
     path("crsc/", include("crsc_calls.urls")),
     path("billing/", include("billing.urls")),
+    path("data-search/", include("data_search.urls")),
+    path("trip-analysis/", include("trip_app.urls")),
 ]
 
 if settings.DEBUG:

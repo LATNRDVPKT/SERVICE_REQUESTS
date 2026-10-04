@@ -15,7 +15,14 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+# override=True: .env is the single source of truth. Without it,
+# python-dotenv refuses to touch a name that's already set in the process's
+# environment — so a terminal/session that picked up an old value (e.g. an
+# export left over from an earlier run) keeps using it forever, no matter
+# how many times .env is edited or the server is restarted from that same
+# shell. This has bitten real credentials (email, AL push URLs, the Darby
+# token) more than once.
+load_dotenv(BASE_DIR / ".env", override=True)
 
 
 def env(key, default=None):
@@ -48,12 +55,26 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",
     "core",
     "accounts",
     "AIS140_FLOW",
     "crsc_calls",
     "billing",
+    "data_search",
+    "trip_app",
 ]
+
+# ---------------------------------------------------------------------------
+# Django REST Framework — used for machine-to-machine intake endpoints
+# (e.g. crsc_calls' AL ticket create/update API). No DRF auth classes
+# configured by default; individual APIViews opt into AllowAny explicitly
+# since these are server-to-server webhooks, not user-facing endpoints.
+# ---------------------------------------------------------------------------
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+}
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -167,9 +188,16 @@ AIS140_IALERT_LOGIN_URL = env("AIS140_IALERT_LOGIN_URL", "")
 AIS140_IALERT_PUSH_URL = env("AIS140_IALERT_PUSH_URL", "")
 AIS140_IALERT_LOGIN_TOKEN_HEADER_VALUE = env("AIS140_IALERT_LOGIN_TOKEN_HEADER_VALUE", "")
 
+# Bearer token the AL team must send on every call to the AIS140 and CRSC
+# intake APIs (see core/api_auth.py). Unset = all AL API calls are rejected.
+AL_API_TOKEN = env("AL_API_TOKEN", "")
+
 DARBY_SEARCH_URL = env("DARBY_SEARCH_URL", "https://api.al.drivewithdarby.com/v1/assets/dynamic/search")
 DARBY_BEARER_TOKEN = env("DARBY_BEARER_TOKEN", "")
 DARBY_REQUEST_TIMEOUT = int(env("DARBY_REQUEST_TIMEOUT", "10"))
+# data_search's "7 Days Analysis" page — Darby's per-asset communication
+# summary API (separate domain/base path from the search API above).
+DARBY_ANALYTICS_BASE_URL = env("DARBY_ANALYTICS_BASE_URL", "https://web.al.drivewithdarby.com/v1/messages/asset")
 
 LOGS_DIR = BASE_DIR / "logs"
 LOGS_DIR.mkdir(exist_ok=True)

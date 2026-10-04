@@ -47,7 +47,13 @@ def get_latest_ticket_update(ticket):
         ))
 
     if not candidates:
-        return {"remark": "", "comments": "", "updated_at": None, "source": "", "responsibility": ""}
+        # No tracked event yet — fall back to whatever's stored on the
+        # ticket itself (set to "DANLAW" at creation until Part-B's first
+        # update takes over).
+        return {
+            "remark": "", "comments": "", "updated_at": None, "source": "",
+            "responsibility": ticket.responsibility or "",
+        }
 
     latest_dt, latest_remark, latest_comments, source = max(candidates, key=lambda c: c[0])
     responsibility = (

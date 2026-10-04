@@ -1,8 +1,4 @@
-<div class="dashboard-cards">
-    <div class="stat-card"><div class="stat-label">Total Invoices</div><div class="stat-value">{{ page_obj.paginator.count }}</div></div>
-    <div class="stat-card"><div class="stat-label">Total Value (GST incl.)</div><div class="stat-value">{{ totals.total_value|default:0|floatformat:0 }}</div></div>
-    <div class="stat-card"><div class="stat-label">Total Qty</div><div class="stat-value">{{ totals.total_qty|default:0 }}</div></div>
-</div>
+<div id="billing-chart-data-holder" data-stats='{{ stats_json }}'></div>
 
 <div class="table-wrap">
 <table class="rt-table">
@@ -43,4 +39,16 @@
     {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&{{ filter_qs }}">Prev</a>{% endif %}
     <span class="current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
     {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&{{ filter_qs }}">Next</a>{% endif %}
+</div>
+
+<div class="dashboard-cards">
+    <div class="stat-card"><div class="stat-label">Total Invoices</div><div class="stat-value">{{ page_obj.paginator.count }}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Invoice Value with GST</div><div class="stat-value">{{ totals.total_value|default:0|floatformat:0 }}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Quantity</div><div class="stat-value">{{ totals.total_qty|default:0 }}</div></div>
+</div>
+
+<div class="chart-row" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;">
+    <div class="chart-box"><h4>Customer-wise Invoice Value (GST incl.)</h4><canvas id="billing-customer-value-chart"></canvas></div>
+    <div class="chart-box"><h4>Customer-wise Quantity</h4><canvas id="billing-customer-qty-chart"></canvas></div>
+    <div class="chart-box"><h4>Product-wise Invoice Value (GST incl.)</h4><canvas id="billing-product-value-chart"></canvas></div>
 </div>

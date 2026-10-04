@@ -37,7 +37,13 @@
                 <a href="{% url 'part_b_form' t.id %}">{{ t.unique_id }}</a>
             </td>
             <td>{{ t.date_of_request|date:"d-m-Y H:i:s" }}</td>
-            <td>{{ t.assigned_engineer_email|default:"" }}</td>
+            <td>
+                {% if t.assigned_engineer_email and t.assigned_engineer_email != "--" %}
+                    {{ t.assigned_engineer_email }}
+                {% else %}
+                    <a href="{% url 'part_a_form_edit' t.id %}" title="Assign an engineer">--</a>
+                {% endif %}
+            </td>
             <td>{{ t.reupdated_request_al|date:"d-m-Y H:i:s"|default:"" }}</td>
             <td>{{ t.state|default:"" }}</td>
             <td>{{ t.vin_no|default:"" }}</td>

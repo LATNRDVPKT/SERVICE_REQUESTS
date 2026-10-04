@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% block title %}7 Days Analysis — Data Search{% endblock %}
+
+{% block content %}
+<div class="page-title">7 Days Analysis <span class="page-title-hint">— live Darby asset lookup by VIN, PSN or ICCID</span></div>
+
+<form method="get" class="toolbar" id="data-search-form">
+    <select class="form-control" name="search_field" id="search_field">
+        {% for value, label in search_field_choices %}
+            <option value="{{ value }}" {% if value == search_field %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <input class="form-control searchbox" type="text" name="search_value" id="search_value"
+           value="{{ search_value }}" placeholder="Enter VIN, PSN or ICCID">
+    <button type="submit" class="btn">Search</button>
+    <div class="spacer"></div>
+    <button type="button" id="download-excel-btn" class="btn secondary" style="display:none;">Download Excel</button>
+</form>
+
+<div id="data-search-status" style="font-size:12.5px; color: var(--muted); margin-bottom: 10px;"></div>
+
+<div id="data-search-results" style="display:none;">
+    <div class="card">
+        <div class="page-subtitle">Asset Details</div>
+        <div class="table-wrap">
+            <table class="rt-table" id="vin-details-table">
+                <thead>
+                    <tr>
+                        <th>VIN</th>
+                        <th>Product Serial Number</th>
+                        <th>Product Code</th>
+                        <th>Card State</th>
+                        <th>Card Status</th>
+                        <th>Alert Packet Kafka Time</th>
+                        <th>V Packet Kafka Time</th>
+                        <th>A Packet Kafka Time</th>
+                        <th>IMEI</th>
+                        <th>Ignition Status</th>
+                        <th>Battery Voltage</th>
+                        <th>Latest CS Renewal End</th>
+                        <th>Address</th>
+                        <th>Com Status</th>
+                        <th>State</th>
+                        <th>Country</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="page-subtitle">Darby 7 Days Analysis</div>
+        <div class="table-wrap">
+            <table class="rt-table" id="darby-summary-table">
+                <thead>
+                    <tr>
+                        <th>Date</th><th>Start ODO</th><th>End ODO</th><th>Kms</th>
+                        <th>Total PKTS</th><th>A PKT</th><th>A PKT %</th><th>V PKT</th><th>V PKT %</th>
+                        <th>LAT 0-5</th><th>LAT 5-15</th><th>LAT 15-30</th><th>LAT 30-1Hr</th>
+                        <th>LAT 1-3Hr</th><th>LAT 3-6Hr</th><th>LAT 6-12Hr</th><th>LAT 12-24Hr</th><th>LAT &gt;24Hr</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="page-subtitle">Charts</div>
+        <div style="display:flex; flex-wrap:wrap; gap:24px;">
+            <div style="flex:1 1 380px; min-width:320px;">
+                <h4>Latency Distribution</h4>
+                <canvas id="latencyStackedBar" height="140"></canvas>
+            </div>
+            <div style="flex:1 1 380px; min-width:320px;">
+                <h4>A PKT &amp; V PKT Distribution</h4>
+                <canvas id="pktStackedBar" height="140"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<script>
+Chart.register(ChartDataLabels);
+let _latestSummaryTable = [];
+
+function num(v) { return Number(v) || 0; }
+
+function renderLatencyStackedBar(summaryTable) {
+    const canvas = document.getElementById("latencyStackedBar");
+    if (!canvas) return;
+    if (window._latencyChart) window._latencyChart.destroy();
+    if (!summaryTable || summaryTable.length === 0) return;
+
+    const labels = summaryTable.map(r => r.date);
+    const categories = [
+        { key: "lat_0_5", label: "0-5m", color: "#2f6f4f" },
+        { key: "lat_5_15", label: "5-15m", color: "#1b4a8a" },
+        { key: "lat_15_30", label: "15-30m", color: "#c9a227" },
+        { key: "lat_30_1h", label: "30m-1h", color: "#e08b1f" },
+        { key: ["lat_1h_3h", "lat_3h_6h", "lat_6h_12h", "lat_12_24h", "lat_gt_24h"], label: ">1h", color: "#a13a2d" },
+    ];
+    const datasets = categories.map(cat => ({
+        label: cat.label,
+        backgroundColor: cat.color,
+        stack: "latency",
+        data: summaryTable.map(row => {
+            const total = ["lat_0_5","lat_5_15","lat_15_30","lat_30_1h","lat_1h_3h","lat_3h_6h","lat_6h_12h","lat_12_24h","lat_gt_24h"]
+                .reduce((s, k) => s + num(row[k]), 0);
+            const value = Array.isArray(cat.key) ? cat.key.reduce((s, k) => s + num(row[k]), 0) : num(row[cat.key]);
+            return total ? Number(((value / total) * 100).toFixed(2)) : 0;
+        }),
+    }));
+
+    window._latencyChart = new Chart(canvas.getContext("2d"), {
+        type: "bar",
+        data: { labels, datasets },
+        plugins: [ChartDataLabels],
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: "top" },
+                datalabels: { display: true, color: "#fff", formatter: v => v > 0 ? v + "%" : "" },
+            },
+            scales: { x: { stacked: true }, y: { stacked: true, min: 0, max: 100, ticks: { callback: v => v + "%" } } },
+        },
+    });
+}
+
+function renderPktStackedBar(summaryTable) {
+    const canvas = document.getElementById("pktStackedBar");
+    if (!canvas) return;
+    if (window._pktChart) window._pktChart.destroy();
+    if (!summaryTable || summaryTable.length === 0) return;
+
+    const labels = summaryTable.map(r => r.date);
+    const aData = summaryTable.map(r => num(r.total_packets) ? Number(((num(r.a_packets) / num(r.total_packets)) * 100).toFixed(2)) : 0);
+    const vData = summaryTable.map(r => num(r.total_packets) ? Number(((num(r.v_packets) / num(r.total_packets)) * 100).toFixed(2)) : 0);
+
+    window._pktChart = new Chart(canvas.getContext("2d"), {
+        type: "bar",
+        data: {
+            labels,
+            datasets: [
+                { label: "A PKT %", data: aData, backgroundColor: "#1b4a8a", stack: "pkt" },
+                { label: "V PKT %", data: vData, backgroundColor: "#e08b1f", stack: "pkt" },
+            ],
+        },
+        plugins: [ChartDataLabels],
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: "top" },
+                datalabels: { display: true, color: "#fff", formatter: v => v > 0 ? v + "%" : "" },
+            },
+            scales: { x: { stacked: true }, y: { stacked: true, min: 0, max: 100, ticks: { callback: v => v + "%" } } },
+        },
+    });
+}
+
+function renderVinDetails(vd) {
+    const body = document.querySelector("#vin-details-table tbody");
+    body.innerHTML = `<tr>
+        <td>${vd.vin || ""}</td>
+        <td>${vd.productSerialNumber || ""}</td>
+        <td>${vd.productCode || ""}</td>
+        <td>${vd.cardState || ""}</td>
+        <td>${vd.cardStatus || ""}</td>
+        <td>${vd.alertPacketKafkaPublishedTime || ""}</td>
+        <td>${vd.vpacketKafkaPublishedTime || ""}</td>
+        <td>${vd.apacketKafkaPublishedTime || ""}</td>
+        <td>${vd.imei || ""}</td>
+        <td>${vd.ignitionStatus === 1 ? "ON" : (vd.ignitionStatus === 0 ? "OFF" : "")}</td>
+        <td>${vd.vehicleBatteryPotential || ""}</td>
+        <td>${vd.latestCsRenewalEndDate || ""}</td>
+        <td>${vd.address || ""}</td>
+        <td>${vd.comStatus || ""}</td>
+        <td>${vd.state || ""}</td>
+        <td>${vd.country || ""}</td>
+    </tr>`;
+}
+
+function pct(part, total) { return total ? ((part / total) * 100).toFixed(2) : "0.00"; }
+
+function summaryRowHtml(row, highlight) {
+    const style = highlight ? ' style="font-weight:bold;background:#eef1f6;"' : "";
+    return `<tr${style}>
+        <td>${row.date}</td><td>${row.start_odo}</td><td>${row.end_odo}</td><td>${row.kms}</td>
+        <td>${row.total_packets}</td><td>${row.a_packets}</td><td>${pct(row.a_packets, row.total_packets)}%</td>
+        <td>${row.v_packets}</td><td>${pct(row.v_packets, row.total_packets)}%</td>
+        <td>${row.lat_0_5}</td><td>${row.lat_5_15}</td><td>${row.lat_15_30}</td><td>${row.lat_30_1h}</td>
+        <td>${row.lat_1h_3h}</td><td>${row.lat_3h_6h}</td><td>${row.lat_6h_12h}</td><td>${row.lat_12_24h}</td><td>${row.lat_gt_24h}</td>
+    </tr>`;
+}
+
+function renderSummaryTable(rows, summaryRow) {
+    const body = document.querySelector("#darby-summary-table tbody");
+    if (!rows || rows.length === 0) {
+        body.innerHTML = '<tr><td colspan="18">No data</td></tr>';
+        return;
+    }
+    body.innerHTML = rows.map(r => summaryRowHtml(r, false)).join("");
+    if (summaryRow) body.innerHTML += summaryRowHtml(summaryRow, true);
+}
+
+function runSearch() {
+    const searchField = document.getElementById("search_field").value;
+    const searchValue = document.getElementById("search_value").value.trim();
+    const status = document.getElementById("data-search-status");
+    const results = document.getElementById("data-search-results");
+    const excelBtn = document.getElementById("download-excel-btn");
+
+    if (!searchValue) return;
+
+    status.textContent = "Searching…";
+    results.style.display = "none";
+    excelBtn.style.display = "none";
+
+    const params = new URLSearchParams({ search_field: searchField, search_value: searchValue });
+    fetch(`{% url 'data_search_fetch' %}?${params.toString()}`)
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok) {
+                status.textContent = data.error || "Search failed.";
+                return;
+            }
+            status.textContent = "";
+            results.style.display = "block";
+            excelBtn.style.display = "inline-block";
+            renderVinDetails(data.vin_details || {});
+            _latestSummaryTable = data.summary_table || [];
+            renderSummaryTable(_latestSummaryTable, data.summary_row);
+            renderLatencyStackedBar(_latestSummaryTable);
+            renderPktStackedBar(_latestSummaryTable);
+        })
+        .catch(err => { status.textContent = "Error: " + err; });
+}
+
+document.getElementById("data-search-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    runSearch();
+});
+
+document.getElementById("download-excel-btn").addEventListener("click", function () {
+    function tableToArray(id) {
+        const table = document.getElementById(id);
+        const data = [];
+        for (const row of table.rows) {
+            data.push(Array.from(row.cells).map(c => c.innerText));
+        }
+        return data;
+    }
+    const combined = [...tableToArray("vin-details-table"), [], [], ...tableToArray("darby-summary-table")];
+    const ws = XLSX.utils.aoa_to_sheet(combined);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Darby Analysis");
+    const searchValue = document.getElementById("search_value").value.trim() || "search";
+    XLSX.writeFile(wb, `${searchValue}_darby_analysis.xlsx`);
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+    if (document.getElementById("search_value").value.trim()) runSearch();
+});
+</script>
+{% endblock %}

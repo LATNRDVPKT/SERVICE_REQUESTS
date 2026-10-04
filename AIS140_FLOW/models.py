@@ -23,9 +23,10 @@ phone_validator = RegexValidator(r"^\d{10}$", "Phone number must be exactly 10 d
 TEMP_CERT_CHOICES = [("Yes", "Yes"), ("No", "No")]
 
 UPDATE_TO_AL_API_CHOICES = [
-    ("Remark", "Remark"),
-    ("Temporary", "Temporary"),
+    ("", "Not determined yet"),
     ("Permanent", "Permanent"),
+    ("Temporary", "Temporary"),
+    ("Remark", "Remark"),
 ]
 
 COMPLETION_STATUS_CHOICES = [
@@ -38,7 +39,10 @@ COMPLETION_STATUS_CHOICES = [
     ("Third Party Device-Rejected", "Third Party Device-Rejected"),
 ]
 
-
+TICKET_THROUGH_CHOICES = [
+    ("AL API","AL API"),
+    ("MANUAL","MANUAL")
+]
 def _char(max_length=100, **kwargs):
     kwargs.setdefault("null", True)
     kwargs.setdefault("blank", True)
@@ -76,7 +80,7 @@ class AIS140Request(models.Model):
         help_text="Auto-generated on first save. Format: DTILAIS-YYMM####",
     )
     request_id = _char(50, verbose_name="AL Request ID")
-    ticket_through = _char(50, verbose_name="Ticket Through")
+    ticket_through = _char(50, verbose_name="Ticket Through", choices=TICKET_THROUGH_CHOICES, default="AL API"  )
 
     # ------------------------------------------------------------------
     # Dates
@@ -145,7 +149,7 @@ class AIS140Request(models.Model):
     requested_name = _char(100, verbose_name="Requestor Email ID")
     requested_phone_number = _char(10, verbose_name="Requestor Phone Number", validators=[phone_validator])
     request_type = _char(50, default="Please Select")
-    category = _char(50, default="--", verbose_name="Category")
+    category = _char(50, verbose_name="Category")
     remarks = models.TextField(null=True, blank=True)
     AL_remarks = _char(150)
     AL_comments = _char(150)

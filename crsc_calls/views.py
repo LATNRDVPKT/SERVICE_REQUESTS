@@ -14,6 +14,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.dateparse import parse_date, parse_datetime
+from django.utils.html import format_html
 from django.utils.timezone import now, make_aware, is_naive
 import datetime
 
@@ -82,6 +83,9 @@ def manager_form(request, call_id=None):
             call = form.save(commit=False)
             if is_new:
                 call.date_of_complaint = now()
+                # Danlaw owns every ticket from the moment it's created until
+                # an engineer/manager update says otherwise.
+                call.responsibility = "DANLAW"
             # Complaint received by is stamped from the authenticated user,
             # not hand-typed.
             call.complaint_received_by = _display_name(request.user)
@@ -137,11 +141,11 @@ def engineer_form(request, call_id):
             history_rows = apply_follow_up_rules(updated, previous)
             compute_tats(updated)
 
-            # iAlert-originated calls must be accepted by the AL iAlert API
-            # before anything is saved locally — if AL rejects the update,
-            # nothing is saved and the engineer sees exactly why. Direct
-            # calls (and any other call_type) skip this and save straight
-            # through once the form itself validates.
+            # iAlert-type calls must have every engineer_form submit pushed
+            # to AL before anything is saved locally — if AL rejects the
+            # update, nothing is saved and the engineer sees exactly why.
+            # Direct calls (and any other call_type) skip this and save
+            # straight through once the form itself validates.
             if updated.call_type == "ialert_call":
                 try:
                     push_follow_up_to_ialert(updated)
@@ -153,13 +157,15 @@ def engineer_form(request, call_id):
             updated.save()
             write_history_rows(updated, history_rows)
 
+            part_b_url = request.build_absolute_uri(reverse("crsc_engineer_form", args=[updated.id]))
+
             if updated.call_status in FIR_CLOSURE_STATUSES and role == "admin":
                 recipients = [e for e in [updated.submitted_to_email] if e]
-                send_fir_approval_email(updated, recipients)
+                send_fir_approval_email(updated, recipients, part_b_url)
 
             # Engineer gets a copy of every new follow-up round they log.
             if any(row["source_field"] == "follow_up" for row in history_rows):
-                send_remark_updated_email(updated)
+                send_remark_updated_email(updated, part_b_url)
 
             # Customer is notified again the first time the call reaches
             # one of the "closed out" statuses.
@@ -192,6 +198,12 @@ def engineer_form(request, call_id):
 # Real-Time dashboard
 # =============================================================================
 PAGE_SIZE = 25
+
+# Index of "complaint_assigned_to" within REPORT_COLUMNS/build_report_row's
+# cell list — used to turn an unassigned ticket's "--" into a link straight
+# to the manager form, admin-only, on the HTML dashboard (the CSV export
+# keeps this column as plain text).
+ASSIGNED_TO_COLUMN_INDEX = [key for key, _label in REPORT_COLUMNS].index("complaint_assigned_to")
 
 
 BULK_TOKEN_SPLIT_RE = re.compile(r"[\s,;]+")
@@ -292,7 +304,15 @@ def real_time_page(request):
     rows = []
     for c in page_obj.object_list:
         latest = get_latest_call_update(c)
-        rows.append({"call": c, "latest": latest, "cells": build_report_row(c, latest)})
+        cells = build_report_row(c, latest)
+        # No engineer assigned yet -> the "--" becomes a link straight to
+        # this call's manager form so an admin can assign one on the spot.
+        if cells[ASSIGNED_TO_COLUMN_INDEX] in ("", "--", None):
+            cells[ASSIGNED_TO_COLUMN_INDEX] = format_html(
+                '<a href="{}" title="Assign an engineer">--</a>',
+                reverse("crsc_manager_form_edit", args=[c.id]),
+            )
+        rows.append({"call": c, "latest": latest, "cells": cells})
 
     context = {
         "rows": rows,

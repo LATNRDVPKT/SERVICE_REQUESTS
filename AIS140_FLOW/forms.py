@@ -9,8 +9,7 @@ from .constants import REQUEST_REMARK_CHOICES, REMARK_COMMENT_MAP
 
 # Part-A mandatory fields (REQ-01)
 PART_A_MANDATORY_FIELDS = [
-    "assigned_engineer_email",
-    "request_type",
+    "assigned_to",
     "vin_no",
     "psn",
     "customer_name",
@@ -18,8 +17,7 @@ PART_A_MANDATORY_FIELDS = [
 ]
 
 PART_A_MANDATORY_LABELS = {
-    "assigned_engineer_email": "Assigned Engineer Email",
-    "request_type": "Request Type",
+    "assigned_to": "Assigned Engineer Email",
     "vin_no": "VIN No",
     "psn": "PSN No",
     "customer_name": "Customer Name",
@@ -95,7 +93,7 @@ class ManagerForm(forms.ModelForm):
             "customer_phone": forms.TextInput(attrs={"placeholder": "Enter Customer Phone"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, engineer_choices=None, **kwargs):
         super().__init__(*args, **kwargs)
         for name in PART_A_MANDATORY_FIELDS:
             if name in self.fields:
@@ -107,6 +105,13 @@ class ManagerForm(forms.ModelForm):
         # enforces the exact format server-side regardless.
         if "vin_no" in self.fields:
             self.fields["vin_no"].widget.attrs["maxlength"] = "17"
+
+        # assigned_to becomes a dropdown of real engineer accounts (+
+        # "Others") instead of free text, same convention as crsc_calls'
+        # Complaint Assigned To.
+        choices = [("", "Please Select")] + list(engineer_choices or []) + [("others", "Others")]
+        self.fields["assigned_to"] = forms.ChoiceField(choices=choices, required=True)
+
         _apply_uniform_widget_style(self)
 
 
@@ -127,11 +132,12 @@ class PartBForm(forms.ModelForm):
       - Attending Engineer is not a form field — the view stamps it from
         the logged-in user on every save (see views.part_b_form), so the
         audit trail always reflects who was actually authenticated.
-      - Update_to_AL_API is engineer-selected (Remark / Temporary /
-        Permanent) — for AL-API tickets (request_id present and
-        ticket_through is "A.L API") it's mandatory, and the matching
-        certificate file or request remark/comments is additionally
-        required depending on whichever value was chosen.
+      - Update_to_AL_API is hand-picked by the engineer (Remark / Temporary
+        / Permanent). For AL-API tickets (request_id present and
+        ticket_through is "A.L API") it's mandatory, and whichever value is
+        chosen additionally requires its matching evidence — a Request
+        Remark/Comment for "Remark", the temporary certificate for
+        "Temporary", either permanent certificate for "Permanent".
     """
 
     class Meta:
@@ -199,13 +205,14 @@ class PartBForm(forms.ModelForm):
         if not request_id or not str(request_id).strip():
             return cleaned  # manual ticket — no further API validation
 
-        # Update to AL API is engineer-selected (Remark / Temporary /
-        # Permanent) — the matching remark or certificate is mandatory for
-        # whichever value was actually chosen.
+        # Update_to_AL_API is now hand-picked by the engineer — validate
+        # whatever they chose has the matching evidence behind it.
         api_value = (cleaned.get("Update_to_AL_API") or "").strip()
 
+        # Update to AL API is mandatory for AL-API tickets — unless the AL
+        # Request ID is blank or Ticket Through isn't AL API (checked above).
         if is_al_api_ticket and not api_value:
-            self.add_error("Update_to_AL_API", "Update to AL API is required.")
+            self.add_error("Update_to_AL_API", "Update to AL API is required for an AL-API ticket.")
 
         if api_value == "Remark":
             if not filled("request_remarks"):
@@ -217,8 +224,8 @@ class PartBForm(forms.ModelForm):
                 self.add_error("upload_certificate_in_ialert",
                                 "Temporary Certificate is required when Update to A.L API is Temporary.")
         elif api_value == "Permanent":
-            if not has_file("upload_certificate_in_ialert_01"):
+            if not has_file("upload_certificate_in_ialert_01") and not has_file("upload_certificate_in_ialert_02"):
                 self.add_error("upload_certificate_in_ialert_01",
-                                "Permanent Certificate is required when Update to A.L API is Permanent.")
+                                "A Permanent Certificate (01 or 02) is required when Update to A.L API is Permanent.")
 
         return cleaned

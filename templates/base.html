@@ -20,6 +20,8 @@
                 <a href="{% url 'home' %}">Home</a>
                 <a href="{% url 'real_time_page' %}">AIS140</a>
                 <a href="{% url 'crsc_real_time_page' %}">CRSC Calls</a>
+                <a href="{% url 'data_search' %}">7 Days Analysis</a>
+                <a href="{% url 'trip_app:upload' %}">Trip Analysis</a>
                 {% if user.profile.role == 'admin' %}
                 <a href="{% url 'part_a_form' %}">New AIS140 Ticket</a>
                 <a href="{% url 'crsc_manager_form' %}">New CRSC Call</a>

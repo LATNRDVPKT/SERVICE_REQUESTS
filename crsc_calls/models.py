@@ -37,10 +37,12 @@ COMPLAINT_RAISED_CHOICES = [
 ]
 COMPLAINT_RAISED_THROUGH_CHOICES = [
     ("", "Please Select"), ("Call", "Call"), ("E-mail", "E-mail"),
-    ("iAlert Portal", "iAlert Portal"), ("others", "Others"),
+    ("iAlert Portal", "iAlert Portal"), ("I-Alert PD API", "I-Alert PD API"), ("others", "Others"),
 ]
 
-
+# call_status — engineer-visible values plus the manager/admin-only FIR
+# closure values (FIR-Repair / FIR-Replace / FIR-Replace_Repair, see
+# forms.py::EngineerForm for the role-based split).
 CALL_STATUS_CHOICES = [
     ("Pending", "Pending"),
     ("Closed", "Closed"),
@@ -55,16 +57,8 @@ CALL_STATUS_CHOICES = [
 ]
 FIR_CLOSURE_STATUSES = {"FIR-Repair", "FIR-Replace", "FIR-Replace_Repair"}
 
-# call_status values that trigger a fresh "closed out" notification e-mail
-# to the customer, the first time a call reaches one of them.
-CUSTOMER_CLOSURE_STATUSES = {
-    "Resolved", "Auto-Resolved", "D1-D2-D3 Completed",
-    "FIR-Repair", "FIR-Replace", "FIR-Replace_Repair",
-    "Closed", "Closed-CI",
-}
-
 FOLLOW_UP_LEVEL_CHOICES = [("D1", "D1"), ("D2", "D2"), ("D3", "D3")]
-
+CUSTOMER_CLOSURE_STATUSES = {"Closed", "Closed-CI", "Resolved", "Auto-Resolved", "D1-D2-D3 Completed"}
 PAYMENT_STATUS_CHOICES = [("--", "--"), ("Paid", "Paid"), ("Not paid", "Not paid")]
 ENGINEER_RECOMMENDATION_CHOICES = [
     ("--", "--"), ("Repair", "Repair"), ("Replace", "Replace"), ("Replace_Repair", "Replace_Repair"),
@@ -96,6 +90,8 @@ class DirectCall(models.Model):
     # ------------------------------------------------------------------
     unique_id = models.CharField(max_length=20, unique=True, blank=True, null=True, editable=False)
     date_of_complaint = models.DateTimeField(default=now)
+    request_received_timestamp = _dt(verbose_name="Request Received Timestamp")
+
     complaint_raised_from_location = _char(100, verbose_name="Complaint Raised Location")
     customer_raised_issue = _char(700, verbose_name="Customer Voice")
     complaint_raised = _char(50, choices=COMPLAINT_RAISED_CHOICES, verbose_name="Complaint Raised")
@@ -119,8 +115,6 @@ class DirectCall(models.Model):
     call_type = _char(50, choices=CALL_TYPE_CHOICES, verbose_name="Call Type")
     ialert_ticket_no = _char(50, verbose_name="iAlert Ticket No")
     updated_contact_no = models.TextField(max_length=1400, null=True, blank=True, verbose_name="Alternate Contact Number")
-    request_received_timestamp = _dt(verbose_name="Request Received Timestamp")
-
     # ------------------------------------------------------------------
     # Part-B — engineer / Darby-sourced vehicle & device data
     # ------------------------------------------------------------------
@@ -147,16 +141,6 @@ class DirectCall(models.Model):
     veh_model = _char(100, verbose_name="Vehicle Model")
     engine_type = _char(100)
 
-    # Darby lookup observability — same convention as AIS140_FLOW's
-    # darby_lookup_status/darby_lookup_at, so a blank Darby-sourced field
-    # can be told apart from "lookup never ran" vs. "lookup ran and found
-    # nothing" vs. "lookup failed".
-    darby_lookup_status = _char(
-        20, default="", verbose_name="Darby Lookup Status",
-        help_text="pending / success / not_found / failed",
-    )
-    darby_lookup_at = _dt(verbose_name="Darby Lookup Time")
-
     call_status = _char(50, choices=CALL_STATUS_CHOICES, default="Pending")
     date_of_closure = _dt()
     final_action_taken = _char(200, verbose_name="Final Action Taken")
@@ -169,9 +153,9 @@ class DirectCall(models.Model):
     exist_software = _char(100, verbose_name="Existing Software")
     updated_software = _char(100)
     issue_identified = _char(100)
-    issue_description = models.TextField(max_length=250, null=True, blank=True, verbose_name="Issue Description")
+    issue_description = models.TextField(null=True, blank=True, verbose_name="Issue Description")
     issue_analysis = _char(200)
-    issue_category = models.TextField(max_length=250, null=True, blank=True)
+    issue_category = models.TextField(null=True, blank=True)
     dealer_name = _char(200)
     al_mfg_plant = _char(100)
     call_closure_category = _char(100)
@@ -187,30 +171,30 @@ class DirectCall(models.Model):
     upload_file_01 = models.FileField(upload_to="crsc_uploads/", null=True, blank=True, verbose_name="Analysis File")
 
     engineer_recommendation = _char(40, choices=ENGINEER_RECOMMENDATION_CHOICES, default="--")
-    hod_comment = models.TextField(max_length=250, null=True, blank=True, verbose_name="HOD Comment")
+    hod_comment = models.TextField(null=True, blank=True, verbose_name="HOD Comment")
     chargable_or_not = _char(40, choices=CHARGEABLE_CHOICES, default="--", verbose_name="Chargeable or Not")
     payment_status = _char(10, choices=PAYMENT_STATUS_CHOICES)
-    remarks = models.TextField(max_length=250, null=True, blank=True)
+    remarks = models.TextField(null=True, blank=True)
 
     # FIR — For Approval sub-fields (mandatory only when call_status is FIR)
-    external_modification = models.TextField(max_length=250, null=True, blank=True)
+    external_modification = models.TextField(null=True, blank=True)
     device_IMEI = _char(15, verbose_name="Device IMEI")
     device_ICCID = _char(20, verbose_name="Device ICCID")
     device_to_be_sent = _char(
         50, choices=DEVICE_SENT_LOCATION_CHOICES, verbose_name="Faulty Device Sent to Location"
     )
-    dealer_address = models.TextField(max_length=250, null=True, blank=True)
+    dealer_address = models.TextField(null=True, blank=True)
 
     # ------------------------------------------------------------------
     # Unified follow-up (replaces D1 / D2 / D3)
     # ------------------------------------------------------------------
     follow_up_level = _char(2, choices=FOLLOW_UP_LEVEL_CHOICES, verbose_name="Follow-Up Level")
     follow_up_remark = _char(150, verbose_name="Follow-Up Remark")
-    follow_up_comment = models.TextField(max_length=250, null=True, blank=True, verbose_name="Follow-Up Comment")
+    follow_up_comment = models.TextField(null=True, blank=True, verbose_name="Follow-Up Comment")
     follow_up_engineer = _char(150, verbose_name="Follow-Up Engineer")
     follow_up_closure_date = _dt(verbose_name="Follow-Up Closure Date")
     next_follow_up_exp_date = _dt(verbose_name="Next Follow-Up Expected Date")
-    al_updated_contact_no = models.TextField(max_length=250, null=True, blank=True, verbose_name="AL Updated Contact No")
+    al_updated_contact_no = models.TextField(null=True, blank=True, verbose_name="pdated Contact No")
     follow_up_locked = models.BooleanField(default=False, editable=False)
 
     # Per-field timestamps, same reasoning as AIS140 REQ-06 — lets the

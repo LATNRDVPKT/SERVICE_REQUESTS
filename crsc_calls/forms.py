@@ -47,17 +47,17 @@ class ManagerForm(forms.ModelForm):
     class Meta:
         model = DirectCall
         fields = [
-            "date_of_complaint", "complaint_raised_from_location", "customer_raised_issue",
+            "date_of_complaint", "request_received_timestamp","complaint_raised_from_location", "customer_raised_issue",
             "complaint_raised", "complaint_raised_by", "contact_number", "customer_mail_id",
             "vehicle_avl_in_workshop", "complaint_raised_through",
             "vin", "psn", "complaint_assigned_to", "ialert_remarks",
             "upload_file", "call_type", "ialert_ticket_no",
-            "updated_contact_no", "request_received_timestamp",
+            "al_updated_contact_no",
         ]
         widgets = {
-            "customer_raised_issue": forms.Textarea(attrs={"rows": 2}),
-            "ialert_remarks": forms.Textarea(attrs={"rows": 2}),
-            "updated_contact_no": forms.Textarea(attrs={"rows": 1}),
+            "customer_raised_issue": forms.Textarea(attrs={"rows": 1}),
+            "ialert_remarks": forms.Textarea(attrs={"rows": 1}),
+            "al_updated_contact_no": forms.Textarea(attrs={"rows": 1}),
         }
 
     def __init__(self, *args, engineer_choices=None, **kwargs):
@@ -119,7 +119,7 @@ class EngineerForm(forms.ModelForm):
             "external_modification", "device_IMEI", "device_ICCID", "device_to_be_sent",
             "dealer_address",
             "follow_up_remark", "follow_up_comment",
-            "al_updated_contact_no",
+
         ]
         widgets = {
             "issue_category": forms.Textarea(attrs={"rows": 1}),
