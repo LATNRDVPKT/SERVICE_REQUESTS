@@ -1,11 +1,106 @@
-<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1f242e;">
-    <p>Hello,</p>
-    <p>A request remark has been recorded on ticket <strong>{{ ticket.unique_id }}</strong>.</p>
-    <table cellpadding="6" style="border-collapse: collapse;">
-        <tr><td><strong>Request Remarks</strong></td><td>{{ ticket.request_remarks|default:"-" }}</td></tr>
-        <tr><td><strong>Request Comments</strong></td><td>{{ ticket.request_comments|default:"-" }}</td></tr>
-        <tr><td><strong>Attending Engineer</strong></td><td>{{ ticket.attending_engineer|default:"-" }}</td></tr>
-    </table>
-    <p><a href="{{ part_b_url }}">Open this ticket in Part-B</a></p>
-    <p style="color:#5a6472; font-size:12px;">This is an automated notification from the AIS140 workflow system.</p>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Part A Form Submission</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        th {
+            text-align: left;
+            background-color: rgb(240,240,240);
+            padding: 8px;
+        }
+        td {
+            padding: 8px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .button {
+            display: inline-block;
+            background-color: #ff9800;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+        }
+        .button:hover {
+            background-color: #e68a00;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h4>Dear Customer,</h4>
+
+        <p>
+            We regret to inform you that the below AIS 140 request has not been completed due to the reasons mentioned in the report.
+            We have followed up with the dealer/customer; however, the issue is still pending resolution at their end.
+        </p>
+
+        <p>
+            As this delay impacts the TAT of the certification process, we kindly request your immediate support in coordinating with them
+            to resolve the issue. This will enable us to complete the AIS 140 certification on time.
+        </p>
+
+        <p>
+            Once again, we request your assistance in resolving the same at the earliest.
+            Please feel free to call or email us for any clarification.
+        </p>
+
+        <table border="1" cellpadding="5" cellspacing="0">
+            <tbody>
+                <tr><th>Ticket No</th><td>{{ ticket.unique_id|default_if_none:""|default:"" }}</td></tr>
+                <tr><th>VIN No</th><td>{{ ticket.vin_no|default_if_none:""|default:"" }}</td></tr>
+                <tr><th>Vehicle Registration No</th><td>{{ ticket.vehicle_no|default_if_none:""|default:"" }}</td></tr>
+                <tr><th>Engineer Contact No</th><td><b>+91 8667228349</b></td></tr>
+                <tr><th>Engineer Email ID</th><td>{{ ticket.assigned_engineer_email|default_if_none:""|default:"" }}</td></tr>
+                {% for f in follow_ups %}
+                <tr><th>{{ f.follow_up }} Engineer Name</th><td>{{ f.attending_engineer|default_if_none:""|default:"" }}</td></tr>
+                <tr><th>{{ f.follow_up }} Remarks</th><td>{{ f.latest_remark|default_if_none:""|default:"" }}</td></tr>
+                <tr><th>{{ f.follow_up }} Comments</th><td>{{ f.latest_comments|default_if_none:""|default:"" }}</td></tr>
+                <tr><th>{{ f.follow_up }} Closure Date</th><td>{{ f.remark_datetime|default_if_none:""|default:"" }}</td></tr>
+                {% endfor %}
+
+                <tr><th>Completion Status</th><td>{{ ticket.completion_status|default_if_none:""|default:"" }}</td></tr>
+                <tr><th>State</th><td>{{ ticket.state|default_if_none:""|default:"" }}</td></tr>
+                <tr><th>Customer Name</th><td>{{ ticket.customer_name|default_if_none:""|default:"" }}</td></tr>
+                <tr><th>Customer Phone No</th><td>{{ ticket.customer_phone|default_if_none:""|default:"" }}</td></tr>
+            </tbody>
+        </table>
+
+        <br>
+
+        <p>
+            We kindly request your technician's support to resolve this concern at the earliest so that we may proceed with and complete the AIS 140 certification process.
+        </p>
+
+        <p>
+            Your prompt assistance in this matter will be highly appreciated.
+        </p>
+
+        <br>
+
+        <p>Thank you,</p>
+        <p><strong>Danlaw Technologies AIS140 Team</strong></p>
+        <p>Support Team: 6303908940 / 04431436579</p>
+        <p>Online Support: 09:00 AM to 05:30 PM, Monday to Saturday</p>
+
+        {% if logo_base64 %}
+        <br>
+        <img src="data:image/png;base64,{{ logo_base64 }}"
+             alt="Danlaw Logo"
+             style="width:150px; height:auto;">
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,6 +1,3 @@
-# =============================================================================
-# crsc_calls — views.py
-# =============================================================================
 import csv
 import json
 import re
@@ -28,18 +25,18 @@ from .services.dashboard_stats import build_dashboard_stats
 from .services.ialert import push_follow_up_to_ialert, IAlertPushError
 from .services.email_utils import (
     send_assignment_email, send_customer_email, send_fir_approval_email,
-    send_remark_updated_email, send_closure_email, send_fir_pdf_email,
+    send_remark_updated_email, send_customer_remark_email, send_closure_email, send_fir_pdf_email,
+    send_feedback_email,
 )
+from .services.feedback import make_feedback_token, read_feedback_token
 from .services.latest_update import get_latest_call_update
 from .services.report_columns import REPORT_COLUMNS, build_report_row, report_headers
 from .services.tat import compute_tats
 from .services.workflow import apply_follow_up_rules, write_history_rows
 
-
 def _user_role(user):
     profile = getattr(user, "profile", None)
     return profile.role if profile else "engineer"
-
 
 def _engineer_choices():
     return [
@@ -47,13 +44,11 @@ def _engineer_choices():
         for p in UserProfile.objects.filter(role="engineer").order_by("display_name")
     ]
 
-
 def _display_name(user):
     profile = getattr(user, "profile", None)
     if profile and profile.display_name:
         return profile.display_name
     return user.get_username()
-
 
 def _flash_form_errors(request, form):
     """Flashes every validation error with its field label, so the user
@@ -68,11 +63,7 @@ def _flash_form_errors(request, form):
         for err in errors:
             messages.error(request, f"{label}: {err}" if label else err)
 
-
-# =============================================================================
-# Part-A — Manager intake
-# =============================================================================
-@admin_required(message="New/edit CRSC calls (manager form) is restricted to admin users.")
+@admin_required(message="New/edit CRSC calls (Ticket Creation form) is restricted to admin users.")
 def manager_form(request, call_id=None):
     entry = get_object_or_404(DirectCall, pk=call_id) if call_id else None
     is_new = entry is None
@@ -83,20 +74,14 @@ def manager_form(request, call_id=None):
             call = form.save(commit=False)
             if is_new:
                 call.date_of_complaint = now()
-                # Danlaw owns every ticket from the moment it's created until
-                # an engineer/manager update says otherwise.
                 call.responsibility = "DANLAW"
-            # Complaint received by is stamped from the authenticated user,
-            # not hand-typed.
+
             call.complaint_received_by = _display_name(request.user)
             previous_assignee = entry.complaint_assigned_to if entry else None
-            # Submitted To Email / engineer contact number are looked up
-            # from Complaint Assigned To instead of being typed by hand.
             call.submitted_to_email, call.engineer_contact_number = resolve_engineer_contact(
                 call.complaint_assigned_to
             )
-            # Assigned Date is stamped the first time an engineer is set —
-            # feeds the D0 TAT (Assigned - Complaint) calculation.
+
             if call.complaint_assigned_to and not call.assigned_date:
                 call.assigned_date = now()
             compute_tats(call)
@@ -119,10 +104,46 @@ def manager_form(request, call_id=None):
 
     return render(request, "crsc_calls/manager_form.html", {"form": form, "call": entry, "is_new": is_new})
 
+def customer_feedback(request, token):
+    """Public (no login) page the customer reaches from the feedback e-mail.
+    The link is a signed, expiring token — see services/feedback.py."""
+    tpl = "crsc_calls/feedback.html"
+    call_id = read_feedback_token(token)
+    call = DirectCall.objects.filter(pk=call_id).first() if call_id else None
+    if call is None:
+        return render(request, tpl, {"invalid": True}, status=404)
 
-# =============================================================================
-# Part-B — Engineer resolution
-# =============================================================================
+    if call.feedback_submission_datetime:
+        return render(request, tpl, {"direct_call": call, "submitted": True})
+
+    if request.method == "POST":
+        confirmation = request.POST.get("confirmation", "")
+        satisfaction = request.POST.get("feedback", "")
+        rating = request.POST.get("rating", "")
+        comment = (request.POST.get("customer_feedback") or "").strip()[:250]
+        if (
+            confirmation not in {"Resolved", "Pending"}
+            or satisfaction not in {"Satisfied", "Not Satisfied"}
+            or rating not in {"1", "2", "3", "4", "5"}
+            or not comment
+        ):
+            return render(request, tpl, {
+                "direct_call": call, "error": "Please answer every question before submitting.",
+            })
+        call.customer_confirmation = confirmation
+        call.customer_satisfaction = satisfaction
+        call.rating = int(rating)
+        call.customer_feedback = comment
+        call.feedback_submission_datetime = now()
+        call.save(update_fields=[
+            "customer_confirmation", "customer_satisfaction", "rating",
+            "customer_feedback", "feedback_submission_datetime",
+        ])
+        return render(request, tpl, {"direct_call": call, "submitted": True})
+
+    return render(request, tpl, {"direct_call": call})
+
+
 @login_required
 def engineer_form(request, call_id):
     call = get_object_or_404(DirectCall, pk=call_id)
@@ -132,21 +153,14 @@ def engineer_form(request, call_id):
         form = EngineerForm(request.POST, request.FILES, instance=call, role=role, call_type=call.call_type)
         if form.is_valid():
             updated = form.save(commit=False)
-            # Follow-Up Engineer is stamped from the authenticated user, not
-            # hand-typed — so the audit trail always names whoever actually
-            # made the change.
             updated.follow_up_engineer = _display_name(request.user)
+
 
             previous = DirectCall.objects.get(pk=call.pk)
             history_rows = apply_follow_up_rules(updated, previous)
             compute_tats(updated)
 
-            # iAlert-type calls must have every engineer_form submit pushed
-            # to AL before anything is saved locally — if AL rejects the
-            # update, nothing is saved and the engineer sees exactly why.
-            # Direct calls (and any other call_type) skip this and save
-            # straight through once the form itself validates.
-            if updated.call_type == "ialert_call":
+            if updated.call_type == "iAlert Call":
                 try:
                     push_follow_up_to_ialert(updated)
                 except IAlertPushError as exc:
@@ -166,17 +180,29 @@ def engineer_form(request, call_id):
             # Engineer gets a copy of every new follow-up round they log.
             if any(row["source_field"] == "follow_up" for row in history_rows):
                 send_remark_updated_email(updated, part_b_url)
+                send_customer_remark_email(updated)
+
+            # Signed link to the public feedback page - used by both the
+            # closure mail's "Provide Feedback" button and the feedback mail.
+            feedback_url = request.build_absolute_uri(
+                reverse("crsc_feedback", args=[make_feedback_token(updated.id)])
+            )
 
             # Customer is notified again the first time the call reaches
-            # one of the "closed out" statuses.
             if (
                 updated.call_status != previous.call_status
                 and updated.call_status in CUSTOMER_CLOSURE_STATUSES
             ):
-                send_closure_email(updated)
+                send_closure_email(updated, feedback_url)
+
+            # Feedback is requested from the customer once per call, the
+            # first time it is saved with any status other than "Pending".
+            if updated.call_status != "Pending" and not previous.feedback_requested_at:
+                if send_feedback_email(updated, feedback_url):
+                    updated.feedback_requested_at = now()
+                    updated.save(update_fields=["feedback_requested_at"])
 
             # FIR summary PDF goes to the location handling the device,
-            # the first time the call reaches one of the FIR outcomes.
             if (
                 updated.call_status != previous.call_status
                 and updated.call_status in FIR_CLOSURE_STATUSES
@@ -193,21 +219,11 @@ def engineer_form(request, call_id):
 
     return render(request, "crsc_calls/engineer_form.html", {"form": form, "call": call, "role": role})
 
-
-# =============================================================================
-# Real-Time dashboard
-# =============================================================================
 PAGE_SIZE = 25
 
-# Index of "complaint_assigned_to" within REPORT_COLUMNS/build_report_row's
-# cell list — used to turn an unassigned ticket's "--" into a link straight
-# to the manager form, admin-only, on the HTML dashboard (the CSV export
-# keeps this column as plain text).
 ASSIGNED_TO_COLUMN_INDEX = [key for key, _label in REPORT_COLUMNS].index("complaint_assigned_to")
 
-
 BULK_TOKEN_SPLIT_RE = re.compile(r"[\s,;]+")
-
 
 def _parse_bulk_tokens(raw):
     """Splits a pasted block of VIN / PSN / Unique ID values (one per line,
@@ -218,10 +234,7 @@ def _parse_bulk_tokens(raw):
     tokens = {t.strip().upper() for t in BULK_TOKEN_SPLIT_RE.split(raw) if t.strip()}
     return sorted(tokens)
 
-
 def _parse_datetime_local(raw):
-    """Parses an HTML5 datetime-local value ('YYYY-MM-DDTHH:MM'); falls back
-    to a bare date ('YYYY-MM-DD') for old bookmarked/typed links."""
     if not raw:
         return None
     dt = parse_datetime(raw)
@@ -232,10 +245,8 @@ def _parse_datetime_local(raw):
         return make_aware(datetime.datetime.combine(d, datetime.time.min))
     return None
 
-
 def _parse_date_range(request, from_key, to_key):
     return _parse_datetime_local(request.GET.get(from_key)), _parse_datetime_local(request.GET.get(to_key))
-
 
 SEARCH_FIELD_CHOICES = [
     ("unique_id", "Unique ID"),
@@ -243,7 +254,6 @@ SEARCH_FIELD_CHOICES = [
     ("psn", "PSN"),
 ]
 SEARCH_FIELD_LOOKUP = {"unique_id": "unique_id", "vin": "vin", "psn": "psn"}
-
 
 def _apply_filters(request, qs):
     call_status = request.GET.get("call_status")
@@ -266,11 +276,6 @@ def _apply_filters(request, qs):
     if ialert_ticket_no:
         qs = qs.filter(ialert_ticket_no__icontains=ialert_ticket_no)
 
-    # Search runs against exactly the field chosen in the dropdown (Unique
-    # ID / VIN / PSN) — pasting multiple values (one per line, or
-    # comma/semicolon/whitespace separated) switches to an exact,
-    # case-insensitive match against all of them; a single value keeps the
-    # more forgiving partial "contains" match.
     if len(bulk_tokens) > 1:
         qs = qs.annotate(_search_u=Upper(search_field)).filter(_search_u__in=bulk_tokens)
     elif search_value:
@@ -290,7 +295,6 @@ def _apply_filters(request, qs):
 
     return qs
 
-
 @login_required
 def real_time_page(request):
     qs = DirectCall.objects.all().order_by("-date_of_complaint")
@@ -305,8 +309,7 @@ def real_time_page(request):
     for c in page_obj.object_list:
         latest = get_latest_call_update(c)
         cells = build_report_row(c, latest)
-        # No engineer assigned yet -> the "--" becomes a link straight to
-        # this call's manager form so an admin can assign one on the spot.
+
         if cells[ASSIGNED_TO_COLUMN_INDEX] in ("", "--", None):
             cells[ASSIGNED_TO_COLUMN_INDEX] = format_html(
                 '<a href="{}" title="Assign an engineer">--</a>',
@@ -342,28 +345,23 @@ def real_time_page(request):
         return render(request, "crsc_calls/partials/dashboard_results.html", context)
     return render(request, "crsc_calls/real_time_page.html", context)
 
-
 @login_required
 def call_history_partial(request, call_id):
     call = get_object_or_404(DirectCall, pk=call_id)
     history = call.history.all().order_by("-event_datetime")
     return render(request, "crsc_calls/partials/history_modal.html", {"call": call, "history": history})
 
-
 DEFAULT_EXPORT_KEYS = [key for key, _label in REPORT_COLUMNS]
-
 
 @login_required
 def export_page(request):
-    """Field-picker screen. Carries the dashboard's current filters forward
-    (as hidden inputs) so the export matches whatever's currently on screen."""
+    
     carried = [(k, v) for k, v in request.GET.items() if k not in ("fields",)]
     return render(request, "crsc_calls/export_page.html", {
         "columns": REPORT_COLUMNS,
         "default_keys": set(DEFAULT_EXPORT_KEYS),
         "carried_filters_list": carried,
     })
-
 
 @login_required
 def download_csv(request):
@@ -372,9 +370,9 @@ def download_csv(request):
 
     qs = DirectCall.objects.all().order_by("-date_of_complaint")
     qs = _apply_filters(request, qs)
-
+    current_ist_timestamp = now().strftime("%Y%m%d_%H%M%S")
     response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = 'attachment; filename="crsc_calls_export.csv"'
+    response["Content-Disposition"] = f'attachment; filename="crsc_calls_export_{current_ist_timestamp}.csv"'
     writer = csv.writer(response)
     writer.writerow(report_headers(selected_keys))
     for call in qs:

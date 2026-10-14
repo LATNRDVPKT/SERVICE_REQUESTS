@@ -8,24 +8,24 @@
 <div class="module-grid">
     <a class="module-card" href="{% url 'real_time_page' %}">
         <h3>AIS140</h3>
-        <p>Certification ticket tracking — Part-A intake, Part-B resolution, iAlert &amp; Darby integration.</p>
+        <p>VLTD Certification Requests.</p>
     </a>
     <a class="module-card" href="{% url 'crsc_real_time_page' %}">
         <h3>CRSC Calls</h3>
-        <p>Customer complaint intake, engineer follow-up (D1/D2/D3), FIR approval workflow.</p>
+        <p>Customer Support Requests.</p>
     </a>
     <a class="module-card" href="{% url 'data_search' %}">
         <h3>7 Days Analysis</h3>
-        <p>Live Darby asset lookup by VIN, PSN or ICCID — device details plus a 7-day packet/latency summary.</p>
+        <p>Device details + 7-day packets/latency summary.</p>
     </a>
     <a class="module-card" href="{% url 'trip_app:upload' %}">
         <h3>Trip Analysis</h3>
-        <p>Upload a packet-log CSV and get a per-trip, per-time-range latency and packet summary as an Excel report.</p>
+        <p>Upload packet-log CSV file and get a per-trip, per-time-range latency and packet summary in Excel.</p>
     </a>
     {% if user.profile.role == 'admin' %}
     <a class="module-card" href="{% url 'billing_real_time_page' %}">
         <h3>Billing</h3>
-        <p>Invoice tracking, payment due dates, GRN status. Admins only.</p>
+        <p>Invoice tracking, payment due dates, GRN status.</p>
     </a>
     {% endif %}
 </div>

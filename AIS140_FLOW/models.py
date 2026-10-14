@@ -1,6 +1,3 @@
-# =============================================================================
-# AIS140_FLOW — models.py
-# =============================================================================
 # AIS140Request        — the single ticket table covering the full lifecycle
 # AIS140RequestUpdate   — append-only audit/history table (REQ-09)
 # =============================================================================
@@ -16,17 +13,12 @@ vin_validator = RegexValidator(r"^[A-Za-z0-9]{17}$", "Chassis No (VIN) must be e
 psn_validator = RegexValidator(r"^\d{10}$", "PSN No must be exactly 10 digits.")
 phone_validator = RegexValidator(r"^\d{10}$", "Phone number must be exactly 10 digits.")
 
-
-# ---------------------------------------------------------------------------
-# Choice constants
-# ---------------------------------------------------------------------------
 TEMP_CERT_CHOICES = [("Yes", "Yes"), ("No", "No")]
 
 UPDATE_TO_AL_API_CHOICES = [
-    ("", "Not determined yet"),
+    ("Remark", "Remark"),
     ("Permanent", "Permanent"),
     ("Temporary", "Temporary"),
-    ("Remark", "Remark"),
 ]
 
 COMPLETION_STATUS_CHOICES = [
@@ -48,25 +40,21 @@ def _char(max_length=100, **kwargs):
     kwargs.setdefault("blank", True)
     return models.CharField(max_length=max_length, **kwargs)
 
-
 def _email(**kwargs):
     kwargs.setdefault("null", True)
     kwargs.setdefault("blank", True)
     return models.EmailField(**kwargs)
-
 
 def _dt(**kwargs):
     kwargs.setdefault("null", True)
     kwargs.setdefault("blank", True)
     return models.DateTimeField(**kwargs)
 
-
 def _file(**kwargs):
     kwargs.setdefault("null", True)
     kwargs.setdefault("blank", True)
     kwargs.setdefault("upload_to", "certificates/")
     return models.FileField(**kwargs)
-
 
 class AIS140Request(models.Model):
     """Full lifecycle record for one AIS140 certification request."""
@@ -91,7 +79,8 @@ class AIS140Request(models.Model):
     reupdated_request_al = _dt(verbose_name="Updated To DTIL")
     reupdated_request_al_updated_at = _dt(verbose_name="Updated To DTIL — Last Changed")
     sos_fitment_date = _dt(verbose_name="SOS Fitment Date")
-
+    device_architecture_type = _char(100, verbose_name="Device Architecture Type")
+    device_battery_voltage = _char(50, verbose_name="Device Battery Voltage")
     # ------------------------------------------------------------------
     # Customer details
     # ------------------------------------------------------------------
@@ -219,10 +208,12 @@ class AIS140Request(models.Model):
     # ------------------------------------------------------------------
     # iAlert / completion
     # ------------------------------------------------------------------
-    Update_to_AL_API = _char(250, choices=UPDATE_TO_AL_API_CHOICES, default="", verbose_name="Update to AL API")
+    Update_to_AL_API = _char(250, choices=UPDATE_TO_AL_API_CHOICES, default="Remark", verbose_name="Update to AL API")
     completion_status = _char(50, choices=COMPLETION_STATUS_CHOICES, default="Pending")
     completion_date = _dt()
     total_tat = _char(100)
+
+    
     D1_TAT = _char(100)
 
     responsibility = models.TextField(null=True, blank=True)
@@ -268,7 +259,7 @@ class AIS140Request(models.Model):
             .values("unique_id")
             .first()
         )
-        next_num = 1025
+        next_num = 1
         if last:
             try:
                 next_num = int(last["unique_id"][-4:]) + 1
@@ -288,10 +279,6 @@ class AIS140Request(models.Model):
         date_str = self.date_of_request.isoformat() if self.date_of_request else "No Date"
         return f"AIS140Request {self.unique_id or self.id} — {date_str}"
 
-
-# =============================================================================
-# REQ-09 — Update history / audit trail
-# =============================================================================
 class AIS140RequestUpdate(models.Model):
     """
     Append-only audit trail. A new row is written every time one of the
@@ -322,6 +309,10 @@ class AIS140RequestUpdate(models.Model):
     responsibility = models.CharField(max_length=100, blank=True, null=True)
     attending_engineer = models.CharField(max_length=255, blank=True, null=True)
     source_field = models.CharField(max_length=50, choices=SOURCE_CHOICES)
+    # D1, D2, D3 ... Dn — the running number of this request-remark push on
+    # the ticket. Assigned automatically in services/workflow.write_history_rows;
+    # blank for non-remark events (AL remarks, certificates, ...).
+    follow_up = models.CharField(max_length=10, blank=True, null=True, verbose_name="Follow-Up")
 
     created_at = models.DateTimeField(auto_now_add=True)
 

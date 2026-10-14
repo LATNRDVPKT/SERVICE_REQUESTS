@@ -1,5 +1,5 @@
 """
-Creates the project's 14 shared login accounts: 3 admins + 11 engineers.
+Creates the project's 16 shared login accounts: 3 admins + 13 engineers.
 
 Usage:
     python manage.py seed_users
@@ -18,28 +18,30 @@ from django.utils.crypto import get_random_string
 from accounts.models import UserProfile
 
 ADMINS = [
-    ("admin1", "Admin One"),
-    ("admin2", "Admin Two"),
-    ("admin3", "Admin Three"),
+    ("upendra", "Upendra"),
+    ("gowtham", "Gowtham"),
+    ("manager", "Manager"),
 ]
 
 ENGINEERS = [
-    ("engineer1", "Engineer One"),
-    ("engineer2", "Engineer Two"),
-    ("engineer3", "Engineer Three"),
-    ("engineer4", "Engineer Four"),
-    ("engineer5", "Engineer Five"),
-    ("engineer6", "Engineer Six"),
-    ("engineer7", "Engineer Seven"),
-    ("engineer8", "Engineer Eight"),
-    ("engineer9", "Engineer Nine"),
-    ("engineer10", "Engineer Ten"),
-    ("engineer11", "Engineer Eleven"),
+    ("eliyas", "Eliyas"),
+    ("gayadhar", "Gayadhar"),
+    ("jitendra", "Jitendra"),
+    ("paribesh", "Paribesh"),
+    ("dilip_kumar", "Dilip Kumar"),
+    ("yoga", "Yoga"),
+    ("narendra", "Narendra"),
+    ("dimple", "Dimple"),
+    ("siva", "Siva"),
+    ("omendra", "Omendra"),
+    ("manish", "Manish"),
+    ("swamy", "Swamy"),
+    ("janam", "Janam"),
 ]
 
 
 class Command(BaseCommand):
-    help = "Seed the 14 shared accounts (3 admin + 11 engineer) used across AIS140 / CRSC Calls / Billing."
+    help = "Seed the 16 shared accounts (3 admin + 13 engineer) used across AIS140 / CRSC Calls / Billing."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -80,7 +82,7 @@ class Command(BaseCommand):
         with open("seeded_credentials.txt", "w") as f:
             f.write(report + "\n")
 
-        self.stdout.write(self.style.SUCCESS("Seeded 14 accounts (3 admin, 11 engineer):"))
+        self.stdout.write(self.style.SUCCESS("Seeded 16 accounts (3 admin, 13 engineer):"))
         self.stdout.write(report)
         self.stdout.write(self.style.WARNING(
             "\nFull list also written to seeded_credentials.txt — distribute securely, "

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Feedback Request</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        a:hover { text-decoration: underline; }
+        .button {
+            display: inline-block;
+            background-color: #ff9800;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+        }
+        .button:hover { background-color: #e68a00; }
+    </style>
+</head>
+<body>
+    <p>Dear <b>Sir/Madam</b>,</p>
+
+    <p><b>{{ call.vin }} issue has been Analysed{% if call.date_of_closure %} on {{ call.date_of_closure }}{% endif %}.</b></p>
+    <p><strong>Ticket Details:</strong></p>
+
+    <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%; text-align: left; background-color: #69a9eefd; color: white;">
+        <thead>
+            <tr>
+                <th>Ticket Number</th>
+                <th>Date of Complaint</th>
+                <th>VIN</th>
+                <th>Issue Identified</th>
+                <th>Call Status</th>
+                <th>Latest Remarks</th>
+                <th>Latest Comments</th>
+
+                <th>Date of Closure</th>
+            </tr>
+        </thead>
+        <tbody style="background-color: white; color: black;">
+            <tr>
+                <td>{{ call.unique_id }}</td>
+                <td>{{ call.date_of_complaint }}</td>
+                <td>{{ call.vin }}</td>
+                <td>{{ call.issue_analysis|default:"" }}</td>
+                <td>
+                    {% if call.call_status == "FIR - For approval" or call.call_status == "FIR-Replace" or call.call_status == "FIR-Repair" or call.call_status == "FIR-Replace_Repair" %}
+                        Taken for analysis
+                    {% else %}
+                        {{ call.call_status }}
+                    {% endif %}
+                </td>
+
+                <td>{{ call.follow_up_level|default:"" }}</td>
+
+                <td>{{ call.follow_up_comment|default:"" }}</td>
+                <td>{{ call.date_of_closure|default:"" }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    {% if call.engineer_recommendation == "Repair" %}
+        <p>
+            Please arrange to send the device for repair to the below given address:
+            {% if call.device_to_be_sent == "Goa" %}
+                <br>
+                <b>DANLAW TECHNOLOGIES INDIA LTD,<br>
+                L15, Verna Industrial Estate, Verna, Quelossim, Goa 403722</b>
+            {% elif call.device_to_be_sent == "Hyderabad" %}
+                <br>
+                <b>Danlaw Technologies India Limited<br>
+                Unit No. 201, C9VM+H76 Gowra Fountainhead, 202 &amp; 203,<br>
+                Huda Techno Enclave Rd, Patrika Nagar, Madhapur,<br>
+                Hyderabad, Telangana 500081</b>
+            {% else %}
+                <br>
+                <b>Address:</b> {{ call.device_to_be_sent }}
+            {% endif %}
+        </p>
+    {% elif call.engineer_recommendation == "Replace" or call.engineer_recommendation == "Replace_Repair" %}
+        <p>
+            Please arrange to send the faulty device to the address below. Once received faulty device, we will dispatch the replacement device.
+            {% if call.device_to_be_sent == "Goa" %}
+                <br>
+                <b>DANLAW TECHNOLOGIES INDIA LTD<br>
+                L15, Verna Industrial Estate, Verna, Quelossim, Goa 403722</b>
+            {% elif call.device_to_be_sent == "Hyderabad" %}
+                <br>
+                <b>Danlaw Technologies India Limited<br>
+                Unit No. 201, C9VM+H76 Gowra Fountainhead, 202 &amp; 203,<br>
+                Huda Techno Enclave Rd, Patrika Nagar, Madhapur,<br>
+                Hyderabad, Telangana 500081</b>
+            {% else %}
+                <br>
+                <b>Address:</b> {{ call.device_to_be_sent }}
+            {% endif %}
+        </p>
+    {% endif %}
+
+    <p>Please click the button below to fill out the feedback form:</p>
+    <p><a href="{{ feedback_url }}" target="_blank" class="button">Provide Feedback</a></p>
+    <p>We value your feedback and look forward to hearing from you.</p>
+
+    <div class="logo-section">
+        <b>For any concerns related to the I Alert device and if vehicle is in the workshop, please send issue details in the below link</b>
+        <br>
+        &ldquo;Press ctrl + click <a href="https://danlawtech-my.sharepoint.com/:x:/p/kunal/EdL_SwTzWKJGqEDg8PkyhvkBdgWSvICMZXkk56KcAuLboA?e=uKnP00" target="_blank">
+        CRSC Format</a> and mail to <b>crscdanlaw@danlawtechnologies.com</b>
+        <br>
+        Alternatively, you may send a &quot;HI&rdquo; message to our centralized <b>WhatsApp number: 6303908940</b> which shall take you to update your complaint step by step. <br> We shall be in contact with in 15-30 minutes,
+        <br>
+        Online Support: 09:30 am to 05:00 Pm from Monday to Saturday except 2nd Saturday.
+        <br><b>Danlaw Technologies Service &amp; Support Team<br>
+        Thank you</b><br><br>
+    </div>
+</body>
+</html>

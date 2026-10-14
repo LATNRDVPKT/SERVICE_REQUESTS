@@ -1,12 +1,67 @@
-<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1f242e;">
-    <p>Hello,</p>
-    <p>Ticket <strong>{{ ticket.unique_id }}</strong> has reached a completion status of
-       <strong>{{ ticket.completion_status }}</strong>.</p>
-    <table cellpadding="6" style="border-collapse: collapse;">
-        <tr><td><strong>Customer</strong></td><td>{{ ticket.customer_name }}</td></tr>
-        <tr><td><strong>VIN</strong></td><td>{{ ticket.vin_no }}</td></tr>
-        <tr><td><strong>Completion Date</strong></td><td>{{ ticket.completion_date }}</td></tr>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Part-B Form Closed</title>
+    <style>
+        th {
+            text-align: left;
+            background-color: rgb(240,240,240);
+            padding: 5px;
+        }
+        td {
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <p>Dear Customer,</p>
+    <p>The AIS140 Certificate request {{ ticket.unique_id }} has
+        {% if ticket.completion_status == "Temporary" or ticket.completion_status == "Permanent" or ticket.completion_status == "Temp + Perm" %}
+            been completed.
+        {% else %}
+            status: {{ ticket.completion_status }}.
+        {% endif %}
+    </p>
+
+    <table border="1" cellpadding="5" cellspacing="0" class="table table-bordered">
+        <tr>
+            <th>Name</th>
+            <th>Details</th>
+        </tr>
+        {% if ticket.unique_id %}<tr><td>Ticket ID</td><td>{{ ticket.unique_id }}</td></tr>{% endif %}
+        {% if ticket.date_of_request %}<tr><td>Date of Request</td><td>{{ ticket.date_of_request }}</td></tr>{% endif %}
+        {% if ticket.requested_by %}<tr><td>Requested By</td><td>{{ ticket.requested_by }}</td></tr>{% endif %}
+        {% if ticket.requested_name %}<tr><td>Requestor Name</td><td>{{ ticket.requested_name }}</td></tr>{% endif %}
+        {% if ticket.state %}<tr><td>State</td><td>{{ ticket.state }}</td></tr>{% endif %}
+        {% if ticket.vin_no %}<tr><td>Chassis No</td><td>{{ ticket.vin_no }}</td></tr>{% endif %}
+        {% if ticket.engine %}<tr><td>Engine No</td><td>{{ ticket.engine }}</td></tr>{% endif %}
+        {% if ticket.psn %}<tr><td>PSN No</td><td>{{ ticket.psn }}</td></tr>{% endif %}
+        {% if ticket.request_type %}<tr><td>Request Type</td><td>{{ ticket.request_type }}</td></tr>{% endif %}
+        {% if ticket.vehicle_no %}<tr><td>Vehicle Regn No</td><td>{{ ticket.vehicle_no }}</td></tr>{% endif %}
+        {% if ticket.customer_name %}<tr><td>Customer Name</td><td>{{ ticket.customer_name }}</td></tr>{% endif %}
+        {% if ticket.customer_phone %}<tr><td>Customer Phone No</td><td>{{ ticket.customer_phone }}</td></tr>{% endif %}
+        {% if ticket.rto_name %}<tr><td>RTO Name</td><td>{{ ticket.rto_name }}</td></tr>{% endif %}
+        {% if ticket.dealer_name %}<tr><td>Dealer Name</td><td>{{ ticket.dealer_name }}</td></tr>{% endif %}
+        {% for f in follow_ups %}
+        {% if f.attending_engineer %}<tr><th>{{ f.follow_up }} Engineer name</th><td>{{ f.attending_engineer }}</td></tr>{% endif %}
+        {% if f.latest_remark %}<tr><th>{{ f.follow_up }} Remarks</th><td>{{ f.latest_remark }}</td></tr>{% endif %}
+        {% if f.remark_datetime %}<tr><th>{{ f.follow_up }} Closing Date</th><td>{{ f.remark_datetime }}</td></tr>{% endif %}
+        {% endfor %}
+        {% if ticket.remarks %}<tr><td>Remarks</td><td>{{ ticket.remarks }}</td></tr>{% endif %}
+        {% if ticket.temp_cert_date %}<tr><td>Temporary Certificate Date</td><td>{{ ticket.temp_cert_date }}</td></tr>{% endif %}
+        {% if ticket.permanent_certificate %}<tr><td>Permanent Certificate</td><td>{{ ticket.permanent_certificate }}</td></tr>{% endif %}
+        <tr><th>Completion Status</th>
+            <td>
+                {% if ticket.completion_status == "Temporary" or ticket.completion_status == "Permanent" or ticket.completion_status == "Temp + Perm" %}
+                    Completed.
+                {% else %}
+                    {{ ticket.completion_status }}
+                {% endif %}
+            </td>
+        </tr>
+        {% if ticket.completion_date %}<tr><td>Completion Date</td><td>{{ ticket.completion_date }}</td></tr>{% endif %}
     </table>
-    <p>Relevant certificates are attached where available.</p>
-    <p style="color:#5a6472; font-size:12px;">This is an automated notification from the AIS140 workflow system.</p>
-</div>
+
+    <p>Best regards,<br>The AIS140 Team</p>
+</body>
+</html>

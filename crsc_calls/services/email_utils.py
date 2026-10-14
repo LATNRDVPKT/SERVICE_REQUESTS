@@ -63,7 +63,7 @@ def send_customer_email(call):
     """Ticket-created notification — goes TO the customer, with the
     assigned engineer CC'd (not addressed directly) so the customer sees
     one clear "your ticket was created" e-mail."""
-    recipients = [e.strip() for e in (call.customer_mail_id or "").split(";") if e.strip()]
+    recipients = [e.strip() for e in (call.customer_mail_id or "").split(";") if e.strip()] + [e.strip() for e in (call.end_customer_mail_id or "").split(";") if e.strip()]
     if not recipients or call.complaint_assigned_to == "--":
         return False
     cc = list(CRSC_CUSTOMER_CC)
@@ -102,7 +102,45 @@ def send_remark_updated_email(call, part_b_url=None):
     )
 
 
-def send_closure_email(call):
+def send_customer_remark_email(call):
+    """Sent to the customer (engineer CC'd) whenever a new follow-up round
+    is logged — same recipient shape as send_closure_email. Uses the same
+    template as the engineer copy, minus the internal Part-B link."""
+    recipients = [e.strip() for e in (call.customer_mail_id or "").split(";") if e.strip()]
+    if not recipients:
+        logger.warning("No customer e-mail on %s — follow-up update not sent to customer.", call.unique_id)
+        return False
+    cc = list(CRSC_CUSTOMER_CC)
+    if call.submitted_to_email:
+        cc.append(call.submitted_to_email)
+    return _send(
+        subject=f"{call.unique_id} — Follow-Up Updated ({call.follow_up_level})",
+        template_name="crsc_calls/emails/remark_updated_email.html",
+        context={"call": call, "part_b_url": None},
+        to=recipients, cc=cc,
+    )
+
+
+def send_feedback_email(call, feedback_url):
+    """Asks the customer for feedback (link to the public feedback page).
+    Sent once the call leaves "Pending". Same recipient shape as
+    send_closure_email."""
+    recipients = [e.strip() for e in (call.customer_mail_id or "").split(";") if e.strip()]
+    if not recipients:
+        logger.warning("No customer e-mail on %s — feedback request not sent.", call.unique_id)
+        return False
+    cc = list(CRSC_CUSTOMER_CC)
+    if call.submitted_to_email:
+        cc.append(call.submitted_to_email)
+    return _send(
+        subject=f"{call.unique_id} — Please share your feedback",
+        template_name="crsc_calls/emails/feedback_email.html",
+        context={"call": call, "feedback_url": feedback_url},
+        to=recipients, cc=cc,
+    )
+
+
+def send_closure_email(call, feedback_url=None):
     """Sent to the customer (engineer CC'd) the first time a call reaches
     one of CUSTOMER_CLOSURE_STATUSES — same recipient shape as
     send_customer_email."""
@@ -115,7 +153,7 @@ def send_closure_email(call):
     return _send(
         subject=f"{call.unique_id} — {call.call_status}",
         template_name="crsc_calls/emails/closure_email.html",
-        context={"call": call},
+        context={"call": call, "feedback_url": feedback_url},
         to=recipients, cc=cc,
     )
 

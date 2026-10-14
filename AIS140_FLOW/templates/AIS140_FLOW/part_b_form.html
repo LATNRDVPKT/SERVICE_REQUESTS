@@ -30,7 +30,12 @@
         <div class="ro-field"><label>RTO Name</label><div>{{ ticket.rto_name|default:"-"  }}</div></div>
         <div class="ro-field"><label>RTO Code</label><div>{{ ticket.rto_code|default:"-"  }}</div></div>
         <div class="ro-field"><label>Dealer Name</label><div>{{ ticket.dealer_name|default:"-" }}</div></div>
+        <div class="ro-field"><label>Dealer Contact</label><div>{{ ticket.Dealer_Contact|default:"-" }}</div></div>
+
         <div class="ro-field"><label>Dealer Code</label><div>{{ ticket.dealer_code|default:"-" }}</div></div>
+        <div class="ro-field"><label>Manufacturing Year</label><div>{{ ticket.manufacturing_year|default:"-" }}</div></div>
+        <div class="ro-field"><label>Vehicle Regn No</label><div>{{ ticket.vehicle_no|default:"-" }}</div></div>
+
         <div class="ro-field"><label>Category</label><div>{{ ticket.category|default:"-" }}</div></div>
         <div class="ro-field"><label>AIS140 Type</label><div>{{ ticket.AIS140_Type|default:"-" }}</div></div>
 </div>
@@ -47,7 +52,7 @@
     <div class="card">
         <div class="form-grid">
             {% for field in form %}
-                {% if field.name|in_list:"device_model,icicid_no,imei_no,additional_email_id,request_remarks,request_comments" %}
+                {% if field.name|in_list:"device_model,device_architecture_type,device_battery_voltage,icicid_no,imei_no,additional_email_id,request_remarks,request_comments" %}
                     {% include "AIS140_FLOW/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
@@ -57,22 +62,14 @@
     <div class="card">
         <div class="form-grid">
             {% for field in form %}
-                {% if field.name|in_list:"temp_cert_reqd,upload_certificate_in_ialert,temp_raised_by,upload_certificate_in_ialert_02,upload_certificate_in_ialert_01,completion_status,Update_to_AL_API" %}
+                {% if field.name|in_list:"temp_cert_reqd,upload_certificate_in_ialert,temp_raised_by,upload_certificate_in_ialert_02,upload_certificate_in_ialert_01,completion_status,Update_to_AL_API,certification_start_date,certification_end_date" %}
                     {% include "AIS140_FLOW/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
         </div>
     </div>
 
-    <div class="card">
-        <div class="form-grid">
-            {% for field in form %}
-                {% if field.name|in_list:"certification_start_date,certification_end_date,rto_approval_date,vahan_date,vahan_uploaded_by,veh_run_kms,total_run_kms" %}
-                    {% include "AIS140_FLOW/partials/field.html" with field=field %}
-                {% endif %}
-            {% endfor %}
-        </div>
-    </div>
+
 
     {% if not read_only %}
     <div class="btn-row">

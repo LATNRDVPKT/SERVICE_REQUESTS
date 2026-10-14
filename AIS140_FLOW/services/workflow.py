@@ -12,10 +12,8 @@ from django.utils.timezone import now
 from AIS140_FLOW.constants import get_responsibility, CERTIFICATE_EVENT_REMARKS, REMARK_COMMENT_MAP
 from AIS140_FLOW.models import AIS140RequestUpdate
 
-
 def _blank(value):
     return value is None or (isinstance(value, str) and not value.strip())
-
 
 def determine_update_to_al_api(instance):
     """
@@ -33,7 +31,6 @@ def determine_update_to_al_api(instance):
     if not _blank(instance.request_remarks):
         return "Remark"
     return ""  # priority 4 — "No update"
-
 
 def apply_part_b_business_rules(instance, previous):
     """
@@ -140,12 +137,18 @@ def apply_part_b_business_rules(instance, previous):
 
     return history_rows
 
-
 def write_history_rows(ticket, history_rows):
     """Persist the AIS140RequestUpdate rows computed by apply_part_b_business_rules."""
     objs = []
+    # Each request-remark push becomes the next follow-up: D1, D2, D3 ... Dn.
+    follow_up_count = ticket.history.filter(source_field="request_remarks").count()
     for row in history_rows:
+        follow_up = ""
+        if row["source_field"] == "request_remarks":
+            follow_up_count += 1
+            follow_up = f"D{follow_up_count}"
         objs.append(AIS140RequestUpdate(
+            follow_up=follow_up,
             ticket=ticket,
             unique_id=ticket.unique_id,
             vin_no=ticket.vin_no,

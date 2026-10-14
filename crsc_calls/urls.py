@@ -7,6 +7,8 @@ urlpatterns = [
     path("manager_form/<int:call_id>/", views.manager_form, name="crsc_manager_form_edit"),
     path("engineer_form/<int:call_id>/", views.engineer_form, name="crsc_engineer_form"),
 
+    path("feedback/<str:token>/", views.customer_feedback, name="crsc_feedback"),
+
     path("real_time_page/", views.real_time_page, name="crsc_real_time_page"),
     path("real_time_page/<int:call_id>/history/", views.call_history_partial, name="crsc_call_history_partial"),
 

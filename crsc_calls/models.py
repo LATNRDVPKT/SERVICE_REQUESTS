@@ -24,8 +24,8 @@ PSN_VALIDATOR = RegexValidator(
 
 CALL_TYPE_CHOICES = [
     ("", "Please Select"),
-    ("ialert_call", "iAlert Call"),
-    ("direct_call", "Direct Call"),
+    ("iAlert Call", "iAlert Call"),
+    ("Direct Call", "Direct Call"),
     ("others", "Others"),
 ]
 
@@ -59,7 +59,6 @@ FIR_CLOSURE_STATUSES = {"FIR-Repair", "FIR-Replace", "FIR-Replace_Repair"}
 
 FOLLOW_UP_LEVEL_CHOICES = [("D1", "D1"), ("D2", "D2"), ("D3", "D3")]
 CUSTOMER_CLOSURE_STATUSES = {"Closed", "Closed-CI", "Resolved", "Auto-Resolved", "D1-D2-D3 Completed"}
-PAYMENT_STATUS_CHOICES = [("--", "--"), ("Paid", "Paid"), ("Not paid", "Not paid")]
 ENGINEER_RECOMMENDATION_CHOICES = [
     ("--", "--"), ("Repair", "Repair"), ("Replace", "Replace"), ("Replace_Repair", "Replace_Repair"),
 ]
@@ -69,18 +68,15 @@ DEVICE_SENT_LOCATION_CHOICES = [
     ("", "Please Select"), ("Goa", "Goa"), ("Hyderabad", "Hyderabad"), ("Chennai", "Chennai"),
 ]
 
-
 def _char(max_length=100, **kwargs):
     kwargs.setdefault("null", True)
     kwargs.setdefault("blank", True)
     return models.CharField(max_length=max_length, **kwargs)
 
-
 def _dt(**kwargs):
     kwargs.setdefault("null", True)
     kwargs.setdefault("blank", True)
     return models.DateTimeField(**kwargs)
-
 
 class DirectCall(models.Model):
     """One CRSC (customer complaint) call, Part-A intake through closure."""
@@ -114,13 +110,11 @@ class DirectCall(models.Model):
     upload_file = models.FileField(upload_to="crsc_uploads/", null=True, blank=True, verbose_name="Upload File")
     call_type = _char(50, choices=CALL_TYPE_CHOICES, verbose_name="Call Type")
     ialert_ticket_no = _char(50, verbose_name="iAlert Ticket No")
-    updated_contact_no = models.TextField(max_length=1400, null=True, blank=True, verbose_name="Alternate Contact Number")
     # ------------------------------------------------------------------
     # Part-B — engineer / Darby-sourced vehicle & device data
     # ------------------------------------------------------------------
-    end_customer_mail_id = models.EmailField(null=True, blank=True, verbose_name="End Customer Mail ID")
+    end_customer_mail_id = models.EmailField(null=True, blank=True, verbose_name="Additional Customer Mail ID")
     veh_reg_no = _char(100, verbose_name="Vehicle Regn No")
-    region = _char(50)
     vehicle_type = _char(100)
     vehicle_running_location = _char(100)
     state = _char(100)
@@ -135,30 +129,26 @@ class DirectCall(models.Model):
     S_trigger_date = _dt(verbose_name="S Trigger Date")
     s_trigger_completion_date = _dt()
     C_trigger_date = _dt(verbose_name="C Trigger Date")
-    vehicle_run_kilometers = _char(50)
-    kilometers_hours = models.IntegerField(null=True, blank=True)
+    c_trigger_completion_date = _dt(verbose_name="C Trigger Completion Date")
+    kilometers_hours = models.IntegerField(null=True, blank=True,verbose_name="Kilometers / Hours")
     main_battery_voltage = models.FloatField(null=True, blank=True, default=0)
     veh_model = _char(100, verbose_name="Vehicle Model")
     engine_type = _char(100)
 
     call_status = _char(50, choices=CALL_STATUS_CHOICES, default="Pending")
     date_of_closure = _dt()
-    final_action_taken = _char(200, verbose_name="Final Action Taken")
     rating = models.IntegerField(null=True, blank=True, verbose_name="Rating")
     customer_feedback = models.TextField(max_length=250, null=True, blank=True, verbose_name="Customer Feedback")
+    customer_confirmation = _char(20, verbose_name="Customer Confirmation")
+    customer_satisfaction = _char(20, verbose_name="Customer Satisfaction")
     feedback_submission_datetime = _dt(verbose_name="Feedback Submission Datetime")
-    contact_person_name = _char(100)
-    contact_person_number = _char(10, validators=[CONTACT_NUMBER_VALIDATOR])
-    contact_category = _char(50)
+    feedback_requested_at = _dt(verbose_name="Feedback Requested At")
     exist_software = _char(100, verbose_name="Existing Software")
     updated_software = _char(100)
     issue_identified = _char(100)
-    issue_description = models.TextField(null=True, blank=True, verbose_name="Issue Description")
     issue_analysis = _char(200)
-    issue_category = models.TextField(null=True, blank=True)
     dealer_name = _char(200)
     al_mfg_plant = _char(100)
-    call_closure_category = _char(100)
     nrd_category = _char(100)
     card_status = _char(100)
 
@@ -166,14 +156,10 @@ class DirectCall(models.Model):
     V_packet_7_days = models.TextField(max_length=100, null=True, blank=True, verbose_name="V Packet Last 7 Days")
     Latency_3_months = models.TextField(max_length=100, null=True, blank=True, verbose_name="Latency Last 3 Months")
     V_packet_3_months = models.TextField(max_length=100, null=True, blank=True, verbose_name="V Packet Last 3 Months")
-    final_analysis = models.TextField(max_length=200, null=True, blank=True, verbose_name="Final Analysis")
-    finalised_issue_category = _char(100)
     upload_file_01 = models.FileField(upload_to="crsc_uploads/", null=True, blank=True, verbose_name="Analysis File")
 
     engineer_recommendation = _char(40, choices=ENGINEER_RECOMMENDATION_CHOICES, default="--")
-    hod_comment = models.TextField(null=True, blank=True, verbose_name="HOD Comment")
     chargable_or_not = _char(40, choices=CHARGEABLE_CHOICES, default="--", verbose_name="Chargeable or Not")
-    payment_status = _char(10, choices=PAYMENT_STATUS_CHOICES)
     remarks = models.TextField(null=True, blank=True)
 
     # FIR — For Approval sub-fields (mandatory only when call_status is FIR)
@@ -185,20 +171,13 @@ class DirectCall(models.Model):
     )
     dealer_address = models.TextField(null=True, blank=True)
 
-    # ------------------------------------------------------------------
-    # Unified follow-up (replaces D1 / D2 / D3)
-    # ------------------------------------------------------------------
     follow_up_level = _char(2, choices=FOLLOW_UP_LEVEL_CHOICES, verbose_name="Follow-Up Level")
     follow_up_remark = _char(150, verbose_name="Follow-Up Remark")
     follow_up_comment = models.TextField(null=True, blank=True, verbose_name="Follow-Up Comment")
     follow_up_engineer = _char(150, verbose_name="Follow-Up Engineer")
-    follow_up_closure_date = _dt(verbose_name="Follow-Up Closure Date")
     next_follow_up_exp_date = _dt(verbose_name="Next Follow-Up Expected Date")
-    al_updated_contact_no = models.TextField(null=True, blank=True, verbose_name="pdated Contact No")
-    follow_up_locked = models.BooleanField(default=False, editable=False)
+    al_updated_contact_no = models.TextField(null=True, blank=True, verbose_name="Alternate/Updated Contact No")
 
-    # Per-field timestamps, same reasoning as AIS140 REQ-06 — lets the
-    # latest-event engine tell which of these changed most recently.
     follow_up_updated_at = _dt()
     al_updated_contact_no_updated_at = _dt()
 
@@ -224,7 +203,7 @@ class DirectCall(models.Model):
             DirectCall.objects.filter(unique_id__startswith=prefix)
             .order_by("-unique_id").values("unique_id").first()
         )
-        next_num = 1073
+        next_num = 1
         if last:
             try:
                 next_num = int(last["unique_id"][-4:]) + 1
@@ -238,7 +217,6 @@ class DirectCall(models.Model):
 
     def __str__(self):
         return f"CRSC Call {self.unique_id} — VIN {self.vin}"
-
 
 class DirectCallUpdate(models.Model):
     """Append-only audit trail — same pattern as AIS140RequestUpdate (REQ-09)."""

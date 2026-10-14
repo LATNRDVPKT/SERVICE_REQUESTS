@@ -131,6 +131,24 @@ def push_follow_up_to_ialert(call):
             f"iAlert rejected the update (HTTP {response.status_code}): {response.text[:300]}"
         )
 
+    # AL answers HTTP 200 even when it refuses the update; the real verdict
+    # is in the JSON body, e.g. {"message": "Failure", "statuscode": 400}.
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    if isinstance(body, dict):
+        body_code = str(body.get("statuscode", "")).strip()
+        body_message = str(body.get("message", "")).strip().lower()
+        if (body_code and body_code != "200") or body_message == "failure":
+            api_logger.error(
+                "INCOMING iAlert push REJECTED (in body) — unique_id=%s status=%s body=%s",
+                call.unique_id, response.status_code, response.text[:300],
+            )
+            raise IAlertPushError(
+                f"iAlert rejected the update: {body.get('data') or body.get('message') or response.text[:300]}"
+            )
+
     api_logger.info(
         "INCOMING iAlert push OK — unique_id=%s status=%s body=%s",
         call.unique_id, response.status_code, response.text[:500],

@@ -12,6 +12,7 @@
 import logging
 
 from django.utils.timezone import now
+from django.urls import reverse
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -170,7 +171,9 @@ class AIS140RemarksUpdateAPIView(APIView):
              "attending_engineer": ticket.attending_engineer},
         ])
 
-        send_remarks_updated_email(ticket)
+        send_remarks_updated_email(
+            ticket, part_b_url=request.build_absolute_uri(reverse("part_b_form", args=[ticket.id])),
+        )
         api_logger.info(
             "INCOMING api_update_ais140_remarks OK — request_id=%s unique_id=%s", request_id, ticket.unique_id,
         )

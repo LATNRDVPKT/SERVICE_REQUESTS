@@ -1,6 +1,3 @@
-# =============================================================================
-# AIS140_FLOW — forms.py
-# =============================================================================
 import json
 
 from django import forms
@@ -31,7 +28,6 @@ DATE_TIME_FIELDS = {
 }
 DATE_FIELDS = {"certification_start_date", "certification_end_date", "rto_approval_date"}
 
-
 def _apply_uniform_widget_style(form):
     """
     Every field gets the same 'form-control' CSS class and, for date/date-
@@ -54,10 +50,6 @@ def _apply_uniform_widget_style(form):
         if isinstance(widget, forms.ClearableFileInput):
             widget.attrs["class"] = "form-control-file"
 
-
-# =============================================================================
-# ManagerForm — Part-A
-# =============================================================================
 class ManagerForm(forms.ModelForm):
     """Manager form to create or edit a certification request (Part-A)."""
 
@@ -98,26 +90,14 @@ class ManagerForm(forms.ModelForm):
         for name in PART_A_MANDATORY_FIELDS:
             if name in self.fields:
                 self.fields[name].required = True
-        # vin_no's DB column is intentionally wider than 17 (legacy rows up
-        # to 18 chars — see models.py), so Django auto-derives maxlength="50"
-        # from the model field and clobbers our widget attrs.setdefault above.
-        # Force it back to 17 for new data entry; the vin_validator still
-        # enforces the exact format server-side regardless.
         if "vin_no" in self.fields:
             self.fields["vin_no"].widget.attrs["maxlength"] = "17"
-
-        # assigned_to becomes a dropdown of real engineer accounts (+
-        # "Others") instead of free text, same convention as crsc_calls'
-        # Complaint Assigned To.
+        if self.instance and self.instance.request_id and "request_id" in self.fields:
+            self.fields["request_id"].disabled = True
         choices = [("", "Please Select")] + list(engineer_choices or []) + [("others", "Others")]
         self.fields["assigned_to"] = forms.ChoiceField(choices=choices, required=True)
-
         _apply_uniform_widget_style(self)
 
-
-# =============================================================================
-# PartBForm — Part-B (engineer form)
-# =============================================================================
 class PartBForm(forms.ModelForm):
     """
     Engineer form to update ticket progress, log a request remark, upload
@@ -143,16 +123,15 @@ class PartBForm(forms.ModelForm):
     class Meta:
         model = AIS140Request
         fields = [
-            "device_model", "icicid_no", "imei_no", "additional_email_id",
-            "request_remarks", "request_comments",
-            "temp_cert_reqd", "temp_raised_by",
+            "device_model","device_architecture_type", "device_battery_voltage", "icicid_no", "imei_no", "additional_email_id",
+            "request_remarks", "request_comments", 
+            "temp_cert_reqd",
             "upload_certificate_in_ialert",
             "upload_certificate_in_ialert_01",
             "upload_certificate_in_ialert_02",
             "Update_to_AL_API", "completion_status",
             "certification_start_date", "certification_end_date",
-            "rto_approval_date", "veh_run_kms", "total_run_kms",
-            "vahan_date", "vahan_uploaded_by",
+
         ]
         widgets = {
             "device_model": forms.TextInput(attrs={"placeholder": "Device Model"}),
@@ -168,6 +147,8 @@ class PartBForm(forms.ModelForm):
             "request_comments": forms.Textarea(attrs={"placeholder": "Enter Request Comments", "rows": 2}),
             "veh_run_kms": forms.TextInput(attrs={"placeholder": "Enter Vehicle Run in Kms"}),
             "total_run_kms": forms.TextInput(attrs={"placeholder": "Enter Vehicle Total Run in Kms"}),
+            "device_architecture_type": forms.TextInput(attrs={"placeholder": "Enter Device Architecture Type"}),
+            "device_battery_voltage": forms.TextInput(attrs={"placeholder": "Enter Device Battery Voltage"}),
             "vahan_uploaded_by": forms.TextInput(attrs={"placeholder": "Enter Name"}),
         }
 
@@ -189,6 +170,25 @@ class PartBForm(forms.ModelForm):
 
         def has_file(field):
             return bool(self.files.get(field) or getattr(self.instance, field, None))
+
+        # Completion Status follows the certificate actually uploaded:
+        #   Temporary  -> the Temporary certificate (Upload Certificate in iAlert)
+        #   Permanent  -> the Permanent certificate (Upload Certificate (Permanent))
+        #   Temp + Perm-> both
+        status = (cleaned.get("completion_status") or "").strip()
+        needs_temp = status in ("Temporary", "Temp + Perm")
+        needs_perm = status in ("Permanent", "Temp + Perm")
+        if needs_temp and not has_file("upload_certificate_in_ialert"):
+            self.add_error(
+                "completion_status",
+                f"Upload the Temporary certificate (Upload Certificate in iAlert) before setting "
+                f"Completion Status to {status}.",
+            )
+        if needs_perm and not has_file("upload_certificate_in_ialert_01"):
+            self.add_error(
+                "completion_status",
+                f"Upload the Permanent certificate before setting Completion Status to {status}.",
+            )
 
         # Whenever Temporary Certificate Required is Yes, the Temporary
         # Certificate file is mandatory — regardless of ticket type.

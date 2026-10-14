@@ -12,6 +12,7 @@
         <tr>
             <th>Unique ID</th>
             <th>VIN No</th>
+            <th>Follow-Up</th>
             <th>Remarks</th>
             <th>Comments</th>
             <th>AL Remarks</th>
@@ -26,6 +27,7 @@
         <tr>
             <td>{{ h.unique_id }}</td>
             <td>{{ h.vin_no }}</td>
+            <td>{{ h.follow_up|default:"" }}</td>
             <td>{% if h.source_field != "al_remarks" %}{{ h.latest_remark }}{% endif %}</td>
             <td>{% if h.source_field != "al_remarks" %}{{ h.latest_comments }}{% endif %}</td>
             <td>{% if h.source_field == "al_remarks" %}{{ h.latest_remark }}{% endif %}</td>
@@ -39,7 +41,7 @@
             </td>
         </tr>
         {% empty %}
-        <tr><td colspan="9">No history recorded yet for this ticket.</td></tr>
+        <tr><td colspan="10">No history recorded yet for this ticket.</td></tr>
         {% endfor %}
     </tbody>
 </table>

@@ -1,10 +1,3 @@
-# =============================================================================
-# AIS140_FLOW — constants.py
-# Central place for business-rule lookup tables shared across views/services.
-# =============================================================================
-
-# Completion statuses that close a ticket (read-only in Part-B once reached,
-# and trigger the completion e-mail + completion_date auto-stamp).
 TERMINAL_STATUSES = frozenset([
     "Permanent",
     "Temp + Perm",
@@ -13,20 +6,13 @@ TERMINAL_STATUSES = frozenset([
     "Third Party Device-Rejected",
 ])
 
-# Statuses that also count as "terminal" purely for auto-stamping completion_date.
 COMPLETION_DATE_TRIGGER_STATUSES = frozenset([
     "Temporary", "Permanent", "Cancelled", "Third Party Device-Rejected",
 ])
 
-# States where Temporary Certificate Required defaults to "Yes" on new
-# tickets (engineers can still change it in Part-B afterward).
 TEMP_CERT_DEFAULT_YES_STATES = frozenset([
     "KARNATAKA", "TAMIL NADU", "HIMACHAL PRADESH", "WEST BENGAL",
 ])
-
-# ---------------------------------------------------------------------------
-# REQ-08 — Latest Remark -> Responsibility mapping
-# ---------------------------------------------------------------------------
 RESPONSIBILITY_MAP = {
     "SIM VALIDITY NOT OK": "AL",
     "VEHICLE REPORT TO WS": "DANLAW",
@@ -48,6 +34,10 @@ RESPONSIBILITY_MAP = {
     "WIRE CUT ALERT": "DEALER/CUSTOMER",
     "TP- FITTED AND TO CANCEL": "DEALER/CUSTOMER",
     "AIS140 REQUEST TO CANCEL": "CUSTOMER",
+    # Keys are upper-case: get_responsibility() upper-cases the remark
+    # before looking it up. These two are the certificate-upload events.
+    "TEMPORARY CERTIFICATE UPLOADED": "RTO",
+    "PERMANENT CERTIFICATE UPLOADED": "CLOSED",
 }
 
 RESPONSIBILITY_CHOICES = [
@@ -55,18 +45,11 @@ RESPONSIBILITY_CHOICES = [
     ("CUSTOMER", "CUSTOMER"),
     ("DANLAW", "DANLAW"),
     ("DEALER/CUSTOMER", "DEALER/CUSTOMER"),
+    ("CLOSED", "CLOSED"),
 ]
 
 
 def get_responsibility(source_field, remark):
-    """
-    Responsibility rule for AIS140:
-      - the latest event is an AL Remarks update -> AL ("Action - AL")
-      - the latest event is a Reupdated Request AL update -> DANLAW
-        ("Action - Danlaw")
-      - otherwise, looked up from the remark via RESPONSIBILITY_MAP
-        (case-insensitive; unmapped remarks resolve to "")
-    """
     if source_field == "al_remarks":
         return "AL"
     if source_field == "reupdated_request_al":
@@ -75,18 +58,6 @@ def get_responsibility(source_field, remark):
         return ""
     return RESPONSIBILITY_MAP.get(str(remark).strip().upper(), "")
 
-
-# ---------------------------------------------------------------------------
-# Request remarks — selectable options + auto-mapped default comment text.
-# The dropdown in Part-B is built from REMARK_COMMENT_MAP's keys, so every
-# remark an engineer can pick always has a starting comment. The engineer
-# can still edit the comment; JS only fills the box if it's still empty
-# (see static/js/app.js) — the server applies the same default as a
-# fallback for non-JS submissions (see services/workflow.py).
-# Responsibility (RESPONSIBILITY_MAP, above) is a separate lookup — a
-# remark with no responsibility entry simply resolves to "" via
-# get_responsibility(), same as any other unmapped remark.
-# ---------------------------------------------------------------------------
 REMARK_COMMENT_MAP = {
     "CONTACT DETAILS WRONG":
         "Called given customer no:( ). Wrong contact no. Dealer to provide correct No",
@@ -134,10 +105,6 @@ CERTIFICATE_EVENT_REMARKS = {
     "temporary_certificate": "Temporary certificate uploaded",
 }
 
-# ---------------------------------------------------------------------------
-# Update_to_AL_API -> which certificate fields must be attached to the
-# outbound iAlert payload (used by services/ialert.py)
-# ---------------------------------------------------------------------------
 IALERT_FILE_MAPPING = {
     "Temporary": [
         ("upload_certificate_in_ialert", "temp_certificate"),
@@ -154,21 +121,28 @@ IALERT_FILE_MAPPING = {
     ],
 }
 
-# ---------------------------------------------------------------------------
-# Engineer name -> e-mail lookup used when a Part-A "assigned_to" value is a
-# short name rather than a full e-mail address. Fill in your own team here,
-# or replace resolve_engineer_email() with a DB-backed lookup.
-# ---------------------------------------------------------------------------
-ENGINEER_EMAIL_MAP = {
-    # "Short Name": "person@yourcompany.com",
-}
+ENGINEER_EMAIL_MAP = {}
+STATE_EXTRA_EMAILS = {}
+PART_A_ASSIGNMENT_CC = []
 
-# Extra CC recipients per state, added to the request-remark and completion e-mails.
-STATE_EXTRA_EMAILS = {
-    # "KARNATAKA": ["sales.hubli@example.com"],
-}
-
-# Additional fixed CC recipients on the Part-A assignment e-mail.
-PART_A_ASSIGNMENT_CC = [
-    # "manager@yourcompany.com",
+# ---------------------------------------------------------------------------
+# Show-stopper (request remark pushed) and completion (certificate uploaded)
+# e-mails. Recipients = assigned engineer, customer, dealer, additional mail
+# id, TSM, plus these fixed addresses.
+# ---------------------------------------------------------------------------
+AIS140_FIXED_RECIPIENTS = [
+    "Venkatasubramanian.S@shokleyland.com",
+    "Kry_karthikeyan@shokleyland.com",
 ]
+SHOW_STOPPER_CC = [
+    "sales@anlawtech.com",
+    "dilipkumarn@anlawtech.com",
+]
+COMPLETION_CC = [
+    "sales@anlawtech.com",
+    "naredrareddyg@anlawtech.com",
+    "dilipkumarn@anlawtech.com",
+]
+COMPLETION_STATE_EXTRA_EMAILS = {
+    "KARNATAKA": ["sales.hubli@amlmotors.com"],
+}

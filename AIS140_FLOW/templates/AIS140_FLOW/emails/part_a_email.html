@@ -1,12 +1,63 @@
-<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1f242e;">
-    <p>Hello,</p>
-    <p>A new AIS140 ticket has been assigned to you.</p>
-    <table cellpadding="6" style="border-collapse: collapse;">
-        <tr><td><strong>Unique ID</strong></td><td>{{ ticket.unique_id }}</td></tr>
-        <tr><td><strong>Customer</strong></td><td>{{ ticket.customer_name }}</td></tr>
-        <tr><td><strong>VIN</strong></td><td>{{ ticket.vin_no }}</td></tr>
-        <tr><td><strong>Request Type</strong></td><td>{{ ticket.request_type }}</td></tr>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Part-A Form Submission</title>
+    <style>
+        th {
+            text-align: left;
+            background-color: rgb(240,240,240);
+            padding: 5px;
+        }
+        td {
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <p>Dear Engineer,</p>
+    <p>A new AIS140 request {{ ticket.unique_id }} has been assigned to you. Below are the details:</p>
+
+    <table  border="1" cellpadding="5" cellspacing="0" class="table table-bordered">
+        <tr>
+            <th>Field</th>
+            <th>Value</th>
+        </tr>
+        <tr><td>Ticket ID</td><td>{{ ticket.unique_id|default_if_none:"" }}</td></tr>
+        <tr><td>Date of Request</td><td>{{ ticket.date_of_request|default_if_none:"" }}</td></tr>
+        <tr><td>Requested By</td><td>{{ ticket.requested_by|default_if_none:"" }}</td></tr>
+        <tr><td>Requestor Name</td><td>{{ ticket.requested_name|default_if_none:"" }}</td></tr>
+        <tr><td>State</td><td>{{ ticket.state|default_if_none:"" }}</td></tr>
+        <tr><td>Chassis No</td><td>{{ ticket.vin_no|default_if_none:"" }}</td></tr>
+        <tr><td>Engine No</td><td>{{ ticket.engine|default_if_none:"" }}</td></tr>
+        <tr><td>PSN No</td><td>{{ ticket.psn|default_if_none:"" }}</td></tr>
+        <tr><td>Request Type</td><td>{{ ticket.request_type|default_if_none:"" }}</td></tr>
+        <tr><td>Vehicle Regn No</td><td>{{ ticket.vehicle_no|default_if_none:"" }}</td></tr>
+        <tr><td>Customer Name</td><td>{{ ticket.customer_name|default_if_none:"" }}</td></tr>
+        <tr><td>Customer Phone No</td><td>{{ ticket.customer_phone|default_if_none:"" }}</td></tr>
+        <tr><td>RTO Name</td><td>{{ ticket.rto_name|default_if_none:"" }}</td></tr>
+        <tr><td>Dealer Name</td><td>{{ ticket.dealer_name|default_if_none:"" }}</td></tr>
+        <tr><td>Remarks</td><td>{{ ticket.remarks|default_if_none:"" }}</td></tr>
+        <tr><td>SOS Fitment Date</td><td>{{ ticket.sos_fitment_date|default_if_none:"" }}</td></tr>
+        <tr><td>Temporary Certificate Date</td><td>{{ ticket.temp_cert_date|default_if_none:"" }}</td></tr>
+        <tr><td>Permanent Certificate</td><td>{{ ticket.permanent_certificate|default_if_none:"" }}</td></tr>
+        <tr><td>Completion Date</td><td>{{ ticket.completion_date|default_if_none:"" }}</td></tr>
+        <tr><td>Total TAT</td><td>{{ ticket.total_tat|default_if_none:"" }}</td></tr>
+        <tr>
+            <td>Upload Certificate in iAlert</td>
+            <td>
+                {% if ticket.upload_certificate_in_ialert %}
+                    Uploaded
+                {% else %}
+                    No file uploaded
+                {% endif %}
+            </td>
+        </tr>
+        <tr><td>Mail to Customer</td><td>{{ ticket.mail_to_customer|default_if_none:"" }}</td></tr>
+        <tr><td>Upload Certificate in Danlaw Server</td><td>{{ ticket.upload_certificate_in_danlaw_server|default_if_none:"" }}</td></tr>
     </table>
-    <p><a href="{{ part_b_url }}">Open this ticket in Part-B</a></p>
-    <p style="color:#5a6472; font-size:12px;">This is an automated notification from the AIS140 workflow system.</p>
-</div>
+
+    {% if part_b_url %}<p><a href="{{ part_b_url }}">Open this ticket in Part-B</a></p>{% endif %}
+
+    <p>Best regards,<br>The AIS140 Team</p>
+</body>
+</html>

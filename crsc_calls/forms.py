@@ -1,6 +1,3 @@
-# =============================================================================
-# crsc_calls — forms.py
-# =============================================================================
 import json
 
 from django import forms
@@ -16,14 +13,27 @@ PART_A_MANDATORY_LABELS = {
     "call_type": "Call Type",
 }
 
+# Mandatory for every call_status except "Pending".
+NON_PENDING_MANDATORY_FIELDS = [
+    ("issue_identified", "Issue Identified"),
+    ("issue_analysis", "Issue Analysis"),
+    ("kilometers_hours", "Kilometers/Hours"),
+    ("main_battery_voltage", "Main Battery Voltage"),
+    ("device_model", "Device Model"),
+    ("exist_software", "Existing Software"),
+    ("updated_software", "Updated Software"),
+]
+# Statuses that additionally require Faulty Device Sent to Location,
+# Dealer Address and Engineer Recommendation.
+FIR_MANDATORY_STATUSES = {"FIR - For approval"} | set(FIR_CLOSURE_STATUSES)
+
 DATE_TIME_FIELDS = {
     "date_of_complaint", "request_received_timestamp",
     "activation_start_date", "activation_end_date", "first_communication_in_darby",
     "last_communication_in_darby", "S_trigger_date", "s_trigger_completion_date",
-    "C_trigger_date", "date_of_closure",
+    "C_trigger_date", "c_trigger_completion_date", "date_of_closure",
 }
 DATE_FIELDS = {"vehicle_sale_date"}
-
 
 def _apply_uniform_widget_style(form):
     for name, field in form.fields.items():
@@ -40,7 +50,6 @@ def _apply_uniform_widget_style(form):
         if isinstance(widget, forms.ClearableFileInput):
             widget.attrs["class"] = "form-control-file"
 
-
 class ManagerForm(forms.ModelForm):
     """Part-A — complaint intake."""
 
@@ -52,12 +61,10 @@ class ManagerForm(forms.ModelForm):
             "vehicle_avl_in_workshop", "complaint_raised_through",
             "vin", "psn", "complaint_assigned_to", "ialert_remarks",
             "upload_file", "call_type", "ialert_ticket_no",
-            "al_updated_contact_no",
         ]
         widgets = {
             "customer_raised_issue": forms.Textarea(attrs={"rows": 1}),
             "ialert_remarks": forms.Textarea(attrs={"rows": 1}),
-            "al_updated_contact_no": forms.Textarea(attrs={"rows": 1}),
         }
 
     def __init__(self, *args, engineer_choices=None, **kwargs):
@@ -80,7 +87,6 @@ class ManagerForm(forms.ModelForm):
     def clean_psn(self):
         return (self.cleaned_data.get("psn") or "").strip()
 
-
 class EngineerForm(forms.ModelForm):
     """
     Part-B — engineer resolution, plus the unified follow-up block and the
@@ -88,7 +94,6 @@ class EngineerForm(forms.ModelForm):
 
     `role` ("admin" or "engineer") decides:
       - whether the three FIR closure statuses are selectable
-      - whether hod_comment is shown at all
 
     Follow-Up Remark/Comment never lock, for either access level — not on
     first submission, and not under the whole-form engineer-level lock
@@ -99,33 +104,26 @@ class EngineerForm(forms.ModelForm):
 
     class Meta:
         model = DirectCall
+        # Exactly the fields engineer_form.html renders — a field in here that
+        # isn't on the page would be blanked on every save.
         fields = [
-            "end_customer_mail_id", "veh_reg_no", "region", "vehicle_type",
+            "follow_up_remark", "follow_up_comment", "call_status", "al_updated_contact_no",
+            "date_of_closure",
+            "end_customer_mail_id", "veh_reg_no", "vehicle_type", "engine_type",
+            "activation_start_date", "activation_end_date", "vehicle_sale_date",
+            "first_communication_in_darby", "last_communication_in_darby",
+            "S_trigger_date", "s_trigger_completion_date", "C_trigger_date", "c_trigger_completion_date",
+            "kilometers_hours", "main_battery_voltage",
             "vehicle_running_location", "state", "device_model", "telco_status",
-            "active_profile", "activation_start_date", "activation_end_date",
-            "vehicle_sale_date", "first_communication_in_darby", "last_communication_in_darby",
-            "S_trigger_date", "s_trigger_completion_date", "C_trigger_date",
-            "vehicle_run_kilometers", "kilometers_hours", "main_battery_voltage",
-            "veh_model", "engine_type",
-            "call_status", "date_of_closure",
-            "contact_person_name", "contact_person_number",
-            "contact_category", "exist_software", "updated_software", "issue_identified",
-            "issue_description", "issue_analysis", "issue_category", "dealer_name", "al_mfg_plant",
-            "call_closure_category", "nrd_category", "card_status",
+            "active_profile", "nrd_category", "card_status",
+            "exist_software", "updated_software", "al_mfg_plant",
+            "dealer_name", "veh_model", "issue_identified", "issue_analysis",
             "Latency_7_days", "V_packet_7_days", "Latency_3_months", "V_packet_3_months",
-            "final_analysis", "finalised_issue_category", "upload_file_01",
-            "engineer_recommendation", "hod_comment", "chargable_or_not", "payment_status",
-            "remarks",
+            "upload_file_01", "remarks",
             "external_modification", "device_IMEI", "device_ICCID", "device_to_be_sent",
-            "dealer_address",
-            "follow_up_remark", "follow_up_comment",
-
+            "dealer_address", "engineer_recommendation", "chargable_or_not",
         ]
         widgets = {
-            "issue_category": forms.Textarea(attrs={"rows": 1}),
-            "issue_description": forms.Textarea(attrs={"rows": 1}),
-            "final_analysis": forms.Textarea(attrs={"rows": 1}),
-            "hod_comment": forms.Textarea(attrs={"rows": 1}),
             "remarks": forms.Textarea(attrs={"rows": 1}),
             "external_modification": forms.Textarea(attrs={"rows": 1}),
             "dealer_address": forms.Textarea(attrs={"rows": 1}),
@@ -144,10 +142,6 @@ class EngineerForm(forms.ModelForm):
         if role != "admin":
             status_choices = [(v, l) for v, l in status_choices if v not in FIR_CLOSURE_STATUSES]
         self.fields["call_status"] = forms.ChoiceField(choices=status_choices, required=True)
-
-        # hod_comment only visible to the manager/admin role
-        if role != "admin" and "hod_comment" in self.fields:
-            del self.fields["hod_comment"]
 
         # follow_up_remark — selectable list, with auto-fill wired to comment
         self.fields["follow_up_remark"] = forms.ChoiceField(
@@ -191,13 +185,26 @@ class EngineerForm(forms.ModelForm):
         if not (cleaned.get("call_status") or "").strip():
             self.add_error("call_status", "Call Status is required.")
 
-        # FIR — For approval sub-fields become mandatory
-        if cleaned.get("call_status") == "FIR - For approval":
+        status = (cleaned.get("call_status") or "").strip()
+
+        # Every status except Pending needs the diagnosis details filled in.
+        if status != "Pending":
+            for name, label in NON_PENDING_MANDATORY_FIELDS:
+                value = cleaned.get(name)
+                missing = value is None or (isinstance(value, str) and not value.strip())
+                # Main Battery Voltage defaults to 0 — a 0 reading is "not entered".
+                if name == "main_battery_voltage" and value == 0:
+                    missing = True
+                if missing:
+                    self.add_error(name, f"{label} is required when Call Status is {status}.")
+
+        # FIR statuses additionally need the device-dispatch details.
+        if status in FIR_MANDATORY_STATUSES:
             if not (cleaned.get("device_to_be_sent") or "").strip():
-                self.add_error("device_to_be_sent", "Required when Call Status is FIR - For approval.")
+                self.add_error("device_to_be_sent", f"Required when Call Status is {status}.")
             if not (cleaned.get("dealer_address") or "").strip():
-                self.add_error("dealer_address", "Required when Call Status is FIR - For approval.")
+                self.add_error("dealer_address", f"Required when Call Status is {status}.")
             if (cleaned.get("engineer_recommendation") or "--") in ("", "--"):
-                self.add_error("engineer_recommendation", "Required when Call Status is FIR - For approval.")
+                self.add_error("engineer_recommendation", f"Required when Call Status is {status}.")
 
         return cleaned

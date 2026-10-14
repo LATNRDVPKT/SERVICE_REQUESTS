@@ -130,10 +130,10 @@ def format_update_to_al(follow_up_level, remark):
 # E-mail CC lists — fill in for your own team. Left empty by default.
 # ---------------------------------------------------------------------------
 CRSC_ASSIGNMENT_CC = [
-    # "sales@yourcompany.com",
+     "sale@danlawtech.com","yogananda@danlawtech.com",""
 ]
 CRSC_CUSTOMER_CC = [
-    # "sales@yourcompany.com",
+     "alertcrsc@ashokleyland.com",
 ]
 
 # ---------------------------------------------------------------------------

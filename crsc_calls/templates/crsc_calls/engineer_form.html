@@ -7,7 +7,7 @@
     <a class="eye-icon" title="View history" data-history-url="{% url 'crsc_call_history_partial' call.id %}">&#128065;</a>
     Part-B — {{ call.unique_id }}
     {% if form.locked_for_role %}
-        <span class="page-title-hint">This call is "{{ call.call_status }}" — read-only for engineer access. Only an admin can edit it further.</span>
+        <span class="page-title-hint"></span>
     {% endif %}
 </div>
 
@@ -40,7 +40,7 @@
     <div class="card">
         <div class="form-grid">
             {% for field in form %}
-                {% if field.name|in_list:"follow_up_remark,follow_up_comment,call_status,al_updated_contact_no" %}
+                {% if field.name|in_list:"follow_up_remark,follow_up_comment,call_status,al_updated_contact_no,date_of_closure" %}
                     {% include "crsc_calls/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
@@ -50,7 +50,7 @@
     <div class="card">
         <div class="form-grid">
             {% for field in form %}
-                {% if field.name|in_list:"end_customer_mail_id,veh_reg_no,region,vehicle_type,vehicle_running_location,state,device_model,telco_status,active_profile,veh_model,engine_type" %}
+                {% if field.name|in_list:"end_customer_mail_id,veh_reg_no,vehicle_type,engine_type" %}
                     {% include "crsc_calls/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
@@ -60,7 +60,7 @@
     <div class="card">
         <div class="form-grid">
             {% for field in form %}
-                {% if field.name|in_list:"activation_start_date,activation_end_date,vehicle_sale_date,first_communication_in_darby,last_communication_in_darby,S_trigger_date,s_trigger_completion_date,C_trigger_date,vehicle_run_kilometers,kilometers_hours,main_battery_voltage" %}
+                {% if field.name|in_list:"activation_start_date,activation_end_date,vehicle_sale_date,first_communication_in_darby,last_communication_in_darby,S_trigger_date,s_trigger_completion_date,C_trigger_date,c_trigger_completion_date,kilometers_hours,main_battery_voltage,vehicle_running_location,state,device_model,telco_status,active_profile,nrd_category,card_status,exist_software,updated_software,al_mfg_plant" %}
                     {% include "crsc_calls/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
@@ -70,7 +70,7 @@
     <div class="card">
         <div class="form-grid">
             {% for field in form %}
-                {% if field.name|in_list:"date_of_closure,contact_person_name,contact_person_number,contact_category,exist_software,updated_software,issue_identified,issue_description,issue_analysis,issue_category,dealer_name,al_mfg_plant,call_closure_category,nrd_category,card_status" %}
+                {% if field.name|in_list:"dealer_name,veh_model, issue_identified,issue_analysis," %}
                     {% include "crsc_calls/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
@@ -80,18 +80,18 @@
     <div class="card">
         <div class="form-grid">
             {% for field in form %}
-                {% if field.name|in_list:"Latency_7_days,V_packet_7_days,Latency_3_months,V_packet_3_months,final_analysis,finalised_issue_category,upload_file_01,engineer_recommendation,hod_comment,chargable_or_not,payment_status,remarks" %}
+                {% if field.name|in_list:"Latency_7_days,V_packet_7_days,Latency_3_months,V_packet_3_months,upload_file_01,remarks" %}
                     {% include "crsc_calls/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
         </div>
     </div>
 
-    <div class="card" id="fir-fields-card" {% if call.call_status != "FIR - For approval" %}hidden{% endif %}>
-        <div class="card-subtitle">Shown and required when Call Status is "FIR - For approval".</div>
+    <div class="card" id="fir-fields-card" {% if not call.call_status|in_list:"FIR - For approval,FIR-Repair,FIR-Replace,FIR-Replace_Repair" %}hidden{% endif %}>
+        <div class="card-subtitle">Shown and required when Call Status is "FIR - For approval", "FIR-Repair", "FIR-Replace" or "FIR-Replace_Repair".</div>
         <div class="form-grid">
             {% for field in form %}
-                {% if field.name|in_list:"external_modification,device_IMEI,device_ICCID,device_to_be_sent,dealer_address" %}
+                {% if field.name|in_list:"external_modification,device_IMEI,device_ICCID,device_to_be_sent,dealer_address,,engineer_recommendation,chargable_or_not" %}
                     {% include "crsc_calls/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
@@ -112,7 +112,8 @@
     var firCard = document.getElementById("fir-fields-card");
     if (!statusField || !firCard) return;
     function toggle() {
-        firCard.hidden = statusField.value !== "FIR - For approval";
+        var firStatuses = ["FIR - For approval", "FIR-Repair", "FIR-Replace", "FIR-Replace_Repair"];
+        firCard.hidden = firStatuses.indexOf(statusField.value) === -1;
     }
     statusField.addEventListener("change", toggle);
     toggle();

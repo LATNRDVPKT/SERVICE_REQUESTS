@@ -136,7 +136,6 @@ def fetch_vehicle_data(vin):
         "active_profile": record.get("profileStatus"),
         "nrd_category": record.get("nrdCategory"),
         "device_ICCID": record.get("iccid"),
-        "contact_person_number": record.get("consumerMobileNumber"),
         "al_mfg_plant": record.get("alMfgPlant"),
         "card_status": record.get("cardStatus"),
         "psn": record.get("assetName"),
@@ -148,6 +147,7 @@ def fetch_vehicle_data(vin):
         "S_trigger_date": _parse_darby_timestamp(record.get("S_activationRequestDate")),
         "C_trigger_date": _parse_darby_timestamp(record.get("C_activationRequestDate")),
         "s_trigger_completion_date": _parse_darby_timestamp(record.get("S_completionDate")),
+        "c_trigger_completion_date": _parse_darby_timestamp(record.get("C_completionDate")),
         "first_communication_in_darby": _parse_darby_timestamp(record.get("firstCommunication")),
         "last_communication_in_darby": last_communication_dt,
     }

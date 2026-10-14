@@ -89,10 +89,8 @@ class CRSCTicketIntakeAPIView(APIView):
             vehicle_avl_in_workshop="No",
             complaint_received_by="A.L API",
             complaint_assigned_to="--",
-            updated_contact_no=alt_contacts,
+            al_updated_contact_no=alt_contacts,
             ialert_remarks=v["remarks"],
-            # Danlaw owns every ticket from the moment it's created until an
-            # engineer/manager update says otherwise.
             responsibility="DANLAW",
         )
 

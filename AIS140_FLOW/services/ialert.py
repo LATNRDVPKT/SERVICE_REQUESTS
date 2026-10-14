@@ -20,10 +20,8 @@ from AIS140_FLOW.constants import IALERT_FILE_MAPPING
 logger = logging.getLogger(__name__)
 api_logger = logging.getLogger("api_traffic")
 
-
 class IAlertPushError(Exception):
     """Raised when the iAlert token request or the update push fails."""
-
 
 def _file_blob(source):
     """
@@ -45,7 +43,6 @@ def _file_blob(source):
         source.close()
     content_type = mimetypes.guess_type(source.name)[0] or "application/octet-stream"
     return source.name.split("/")[-1], content, content_type
-
 
 def _get_ialert_token(context_label=""):
     """Requests a fresh token from the iAlert login endpoint. Returns the
@@ -97,7 +94,6 @@ def _get_ialert_token(context_label=""):
     # Never log the token itself — it's a live credential.
     api_logger.info("iAlert (AIS140) token request OK — %sstatus=%s", prefix, response.status_code)
     return token
-
 
 def push_update_to_ialert(ticket, form_files=None):
     """
@@ -165,6 +161,24 @@ def push_update_to_ialert(ticket, form_files=None):
         )
         raise IAlertPushError(f"iAlert rejected the update (HTTP {response.status_code}): "
                                f"{response.text[:300]}")
+
+    # AL answers HTTP 200 even when it refuses the update; the real verdict
+    # is in the JSON body, e.g. {"message": "Failure", "statuscode": 400}.
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    if isinstance(body, dict):
+        body_code = str(body.get("statuscode", "")).strip()
+        body_message = str(body.get("message", "")).strip().lower()
+        if (body_code and body_code != "200") or body_message == "failure":
+            api_logger.error(
+                "INCOMING iAlert (AIS140) push REJECTED (in body) — ticket=%s status=%s body=%s",
+                ticket.unique_id, response.status_code, response.text[:300],
+            )
+            raise IAlertPushError(
+                f"iAlert rejected the update: {body.get('data') or body.get('message') or response.text[:300]}"
+            )
 
     api_logger.info(
         "INCOMING iAlert (AIS140) push OK — ticket=%s status=%s body=%s",

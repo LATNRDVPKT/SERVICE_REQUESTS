@@ -5,10 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>FIR Request Approval Notification</title>
     <style>
-        body { font-family: Arial, sans-serif; font-size: 14px; color: #1f242e; }
-        table { border-collapse: collapse; width: 100%; max-width: 640px; }
-        th { text-align: left; background-color: rgb(240,240,240); padding: 8px; width: 40%; }
-        td { padding: 8px; word-wrap: break-word; }
+        th {
+            text-align: left;
+            background-color: rgb(240,240,240);
+            padding: 5px;
+        }
+        td {
+            padding: 5px;
+            width: 60%;
+            word-wrap: break-word;
+        }
         .button {
             display: inline-block;
             background-color: #ff9800;
@@ -28,31 +34,57 @@
 <body>
     <div>
         <h2>Call {{ call.call_status }} Notification</h2>
-        <p>Call <strong>{{ call.unique_id }}</strong> has reached closure status <strong>{{ call.call_status }}</strong> and needs FIR approval review.</p>
-        <table border="1" cellpadding="5" cellspacing="0">
+        <p>The following call has been closed by the engineer:</p>
+        <table border="1" cellpadding="5" cellspacing="0" class="table table-bordered">
             <tbody>
-                <tr><th>Ticket Number</th><td>{{ call.unique_id }}</td></tr>
-                <tr><th>VIN</th><td>{{ call.vin }}</td></tr>
+                <tr><th>Ticket Number</th><td>{{ call.unique_id|default:"" }}</td></tr>
+                <tr><th>Date of Complaint</th><td>{{ call.date_of_complaint|default:"" }}</td></tr>
+                <tr><th>Complaint Type</th><td>{{ call.call_type|default:"" }}</td></tr>
+                <tr><th>I Alert Ticket No</th><td>{{ call.ialert_ticket_no|default:"" }}</td></tr>
+                <tr><th>Vehicle Availability in Workshop</th><td>{{ call.vehicle_avl_in_workshop|default:"" }}</td></tr>
+                <tr><th>Complaint Raised From Location</th><td>{{ call.complaint_raised_from_location|default:"" }}</td></tr>
+                <tr><th>Customer Voice</th><td>{{ call.customer_raised_issue|default:"" }}</td></tr>
+                <tr><th>Complaint Raised</th><td>{{ call.complaint_raised|default:"" }}</td></tr>
+                <tr><th>Complaint Raised By</th><td>{{ call.complaint_raised_by|default:"" }}</td></tr>
+                <tr><th>Contact Number</th><td>{{ call.contact_number|default:"" }}</td></tr>
+                <tr><th>Customer Mail ID</th><td>{{ call.customer_mail_id|default:"" }}</td></tr>
+                <tr><th>Complaint Raised Through</th><td>{{ call.complaint_raised_through|default:"" }}</td></tr>
+                <tr><th>Complaint Received By</th><td>{{ call.complaint_received_by|default:"" }}</td></tr>
+                <tr><th>VIN</th><td>{{ call.vin|default:"" }}</td></tr>
                 <tr><th>Complaint Assigned To</th><td>{{ call.complaint_assigned_to|default:"" }}</td></tr>
+                <tr><th>Engineer Contact Number</th><td>{{ call.engineer_contact_number|default:"" }}</td></tr>
+                <tr><th>PSN</th><td>{{ call.psn|default:"" }}</td></tr>
+                <tr><th>Device Model</th><td>{{ call.device_model|default:"" }}</td></tr>
+                <tr><th>Telco Status</th><td>{{ call.telco_status|default:"" }}</td></tr>
+                <tr><th>Active Profile</th><td>{{ call.active_profile|default:"" }}</td></tr>
+                <tr><th>Activation Start Date</th><td>{{ call.activation_start_date|default:"" }}</td></tr>
+                <tr><th>Activation End Date</th><td>{{ call.activation_end_date|default:"" }}</td></tr>
+                <tr><th>Vehicle Sale Date</th><td>{{ call.vehicle_sale_date|default:"" }}</td></tr>
+                <tr><th>First Communication in Darby</th><td>{{ call.first_communication_in_darby|default:"" }}</td></tr>
+                <tr><th>Last Communication in Darby</th><td>{{ call.last_communication_in_darby|default:"" }}</td></tr>
+                <tr><th>Vehicle Type</th><td>{{ call.vehicle_type|default:"" }}</td></tr>
+                <tr><th>Kilometers/Hours</th><td>{{ call.kilometers_hours|default:"" }}</td></tr>
+                <tr><th>Main Battery Voltage</th><td>{{ call.main_battery_voltage|default:"" }}</td></tr>
+                <tr><th>Vehicle Running Location</th><td>{{ call.vehicle_running_location|default:"" }}</td></tr>
+                <tr><th>State</th><td>{{ call.state|default:"" }}</td></tr>
+                <tr><th>Existing Software</th><td>{{ call.exist_software|default:"" }}</td></tr>
+                <tr><th>Updated Software</th><td>{{ call.updated_software|default:"" }}</td></tr>
+                <tr><th>Issue Identified</th><td>{{ call.issue_identified|default:"" }}</td></tr>
+                <tr><th>Issue Analysis</th><td>{{ call.issue_analysis|default:"" }}</td></tr>
+                <tr><th>Latest Remarks</th><td>{{ call.follow_up_level|default:"" }}{% if call.follow_up_remark %} - {{ call.follow_up_remark }}{% endif %}</td></tr>
+                <tr><th>Latest Comments</th><td>{{ call.follow_up_comment|default:"" }}</td></tr>
+
                 <tr><th>Call Status</th><td>{{ call.call_status|default:"" }}</td></tr>
-                <tr><th>Engineer Recommendation</th><td>{{ call.engineer_recommendation|default:"" }}</td></tr>
-                <tr><th>Device to be Sent</th><td>{{ call.device_to_be_sent|default:"" }}</td></tr>
-                <tr><th>Dealer Address</th><td>{{ call.dealer_address|default:"" }}</td></tr>
+                <tr><th>Date of Closure</th><td>{{ call.date_of_closure|default:"" }}</td></tr>
             </tbody>
         </table>
+        {% if part_b_url %}
+        <p>You can review the details and take necessary actions by visiting the following link:</p>
 
-        <p>You can review the details and take necessary action by visiting the following link:</p>
         <p><a href="{{ part_b_url }}" target="_blank" class="button">Click here</a></p>
+        {% endif %}
 
-        <div>
-            <br>
-            <b>Danlaw Technologies Service &amp; Support Team</b><br>
-            Email: crscdanlaw@danlawtechnologies.com<br>
-            Support Team - 6303908940 / 04431436579<br>
-            Online support: 09:00AM to 05:30PM, Monday to Saturday<br>
-            Thank you
-            {% if logo_base64 %}<br><img src="data:image/png;base64,{{ logo_base64 }}" alt="Danlaw Logo" style="width:150px;height:auto;">{% endif %}
-        </div>
+        <p>Thank you,<br>Support Team</p>
     </div>
 </body>
 </html>

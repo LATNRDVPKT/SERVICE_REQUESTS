@@ -1,6 +1,3 @@
-# =============================================================================
-# AIS140_FLOW — views.py
-# =============================================================================
 import csv
 import json
 import logging
@@ -30,19 +27,21 @@ from .forms import ManagerForm, PartBForm
 from .models import AIS140Request
 from .services.darby import run_darby_lookup_and_save
 from .services.email_utils import (
-    send_part_a_assignment_email, send_request_remark_email,
+    send_part_a_assignment_email, send_show_stopper_email,
     send_completion_email,
 )
 from .services.ialert import push_update_to_ialert, IAlertPushError
 from .services.latest_update import get_latest_ticket_update
 from .services.workflow import apply_part_b_business_rules, write_history_rows
-from .services.export import EXPORT_COLUMNS, DEFAULT_SELECTED_KEYS, build_row, selected_columns
+from .services.export import (
+    EXPORT_COLUMNS, DEFAULT_SELECTED_KEYS, build_row, selected_columns,
+    export_columns_for, max_follow_up_number,
+)
 from .services.dashboard_stats import build_dashboard_stats
 from .services.tat import compute_tats
 
 logger = logging.getLogger(__name__)
 api_logger = logging.getLogger("api_traffic")
-
 
 def _engineer_choices():
     return [
@@ -50,10 +49,6 @@ def _engineer_choices():
         for p in UserProfile.objects.filter(role="engineer").order_by("display_name")
     ]
 
-
-# =============================================================================
-# Part-A — Manager ticket creation / edit
-# =============================================================================
 @admin_required(message="New/edit AIS140 tickets (Part-A) is restricted to admin users.")
 def part_a_form(request, ticket_id=None):
     instance = get_object_or_404(AIS140Request, pk=ticket_id) if ticket_id else None
@@ -97,10 +92,6 @@ def part_a_form(request, ticket_id=None):
         "form": form, "ticket": instance, "is_new": is_new,
     })
 
-
-# =============================================================================
-# Part-B — Engineer resolution workflow
-# =============================================================================
 @login_required
 def part_b_form(request, ticket_id):
     ticket = get_object_or_404(AIS140Request, pk=ticket_id)
@@ -124,12 +115,11 @@ def part_b_form(request, ticket_id):
                 updated.completion_date = now()
             compute_tats(updated)
 
-            is_admin = _user_role(request.user) == "admin"
             ticket_through = (previous.ticket_through or "").strip().lower()
             is_al_api_ticket = bool(previous.request_id) and ticket_through in ("a.l api", "al api")
             try:
                 with transaction.atomic():
-                    if is_al_api_ticket and is_admin:
+                    if is_al_api_ticket:
                         push_update_to_ialert(updated, form_files=request.FILES)
                     updated.save()
                     write_history_rows(updated, history_rows)
@@ -137,18 +127,22 @@ def part_b_form(request, ticket_id):
                 messages.error(request, f"iAlert rejected this update — nothing was saved. ({exc})")
                 return redirect("part_b_form", ticket_id=ticket.id)
 
-            part_b_url = request.build_absolute_uri(reverse("part_b_form", args=[updated.id]))
-            send_request_remark_email(updated, part_b_url)
-            if not was_terminal and becomes_terminal:
+            # Engineer pushed a request remark (D1, D2 ... Dn) -> show-stopper mail.
+            if updated.request_remarks and any(
+                row["source_field"] == "request_remarks" for row in history_rows
+            ):
+                send_show_stopper_email(updated)
+
+            # A certificate was uploaded (or the ticket just reached a terminal
+            # status) -> completion mail, certificates attached.
+            certificate_uploaded = any(
+                row["source_field"] in ("temporary_certificate", "permanent_certificate")
+                for row in history_rows
+            )
+            if certificate_uploaded or (not was_terminal and becomes_terminal):
                 send_completion_email(updated)
 
-            if previous.request_id and not is_admin:
-                messages.success(
-                    request,
-                    "Ticket updated successfully. An admin must submit this ticket to push the update to AL.",
-                )
-            else:
-                messages.success(request, "Ticket updated successfully.")
+            messages.success(request, "Ticket updated successfully.")
             return redirect("part_b_form", ticket_id=updated.id)
         else:
             _flash_form_errors(request, form)
@@ -159,24 +153,17 @@ def part_b_form(request, ticket_id):
         "form": form, "ticket": ticket, "read_only": read_only,
     })
 
-
-# =============================================================================
-# Real-Time dashboard
-# =============================================================================
 REALTIME_PAGE_SIZE = 25
-
 
 def _user_role(user):
     profile = getattr(user, "profile", None)
     return profile.role if profile else "engineer"
-
 
 def _display_name(user):
     profile = getattr(user, "profile", None)
     if profile and profile.display_name:
         return profile.display_name
     return user.get_username()
-
 
 def _flash_form_errors(request, form):
     """Flashes every validation error with its field label, so the engineer
@@ -190,9 +177,7 @@ def _flash_form_errors(request, form):
         for err in errors:
             messages.error(request, f"{label}: {err}" if label else err)
 
-
 BULK_TOKEN_SPLIT_RE = re.compile(r"[\s,;]+")
-
 
 def _parse_bulk_tokens(raw):
     """Splits a pasted block of Chassis No / PSN / Unique ID values (one per
@@ -202,7 +187,6 @@ def _parse_bulk_tokens(raw):
         return []
     tokens = {t.strip().upper() for t in BULK_TOKEN_SPLIT_RE.split(raw) if t.strip()}
     return sorted(tokens)
-
 
 def _parse_datetime_local(raw):
     """Parses an HTML5 datetime-local value ('YYYY-MM-DDTHH:MM'); falls back
@@ -217,13 +201,11 @@ def _parse_datetime_local(raw):
         return make_aware(datetime.datetime.combine(d, datetime.time.min))
     return None
 
-
 def _parse_date_range(request, from_key, to_key):
     """Returns (from_date, to_date) as aware datetimes, or (None, None)."""
     from_dt = _parse_datetime_local(request.GET.get(from_key))
     to_dt = _parse_datetime_local(request.GET.get(to_key))
     return from_dt, to_dt
-
 
 SEARCH_FIELD_CHOICES = [
     ("unique_id", "Unique ID"),
@@ -231,7 +213,6 @@ SEARCH_FIELD_CHOICES = [
     ("psn", "PSN"),
 ]
 SEARCH_FIELD_LOOKUP = {"unique_id": "unique_id", "vin": "vin_no", "psn": "psn"}
-
 
 def _apply_dashboard_filters(request, qs):
     state = request.GET.get("state")
@@ -271,7 +252,6 @@ def _apply_dashboard_filters(request, qs):
         qs = qs.filter(completion_date__lte=comp_to)
 
     return qs
-
 
 @login_required
 def real_time_page(request):
@@ -318,7 +298,6 @@ def real_time_page(request):
 
     return render(request, "AIS140_FLOW/real_time_page.html", context)
 
-
 @login_required
 def ticket_history_partial(request, ticket_id):
     """REQ-10 — eye-icon drill-down: full AIS140RequestUpdate trail for one ticket."""
@@ -328,10 +307,6 @@ def ticket_history_partial(request, ticket_id):
         "ticket": ticket, "history": history,
     })
 
-
-# =============================================================================
-# CSV export — single, field-selectable
-# =============================================================================
 @login_required
 def export_page(request):
     """Field-picker screen. Carries the dashboard's current filters forward
@@ -343,7 +318,6 @@ def export_page(request):
         "carried_filters_list": carried,
     })
 
-
 @login_required
 def download_csv(request):
     selected_keys = request.GET.getlist("fields") or DEFAULT_SELECTED_KEYS
@@ -353,21 +327,23 @@ def download_csv(request):
     qs = AIS140Request.objects.all().order_by("-date_of_request")
     qs = _apply_dashboard_filters(request, qs)
 
+    # D3..Dn follow-up columns are appended automatically when any exported
+    # ticket has that many follow-ups.
+    columns = export_columns_for(max_follow_up_number(qs))
+    current_ist_timestamp = now().strftime("%Y%m%d_%H%M%S")
     response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = 'attachment; filename="ais140_export.csv"'
+    response["Content-Disposition"] = f'attachment; filename="ais140_export_{current_ist_timestamp}.csv"'
     writer = csv.writer(response)
-    writer.writerow([label for _key, label in selected_columns(selected_keys)])
+    writer.writerow([label for _key, label in selected_columns(selected_keys, columns)])
     for ticket in qs:
-        writer.writerow(build_row(ticket, set(selected_keys)))
+        writer.writerow(build_row(ticket, set(selected_keys), columns))
     return response
-
 
 # =============================================================================
 # External API intake (Ashok Leyland / iAlert) — moved to api_views.py
 # (DRF APIViews: AIS140TicketCreateAPIView, AIS140RemarksUpdateAPIView),
 # wired directly in urls.py.
 # =============================================================================
-
 
 @login_required
 def fetch_darby_communication_ais140(request, ticket_id):
@@ -384,7 +360,6 @@ def fetch_darby_communication_ais140(request, ticket_id):
         "architecture_type": ticket.device_architecture_type,
         "battery_voltage": ticket.device_battery_voltage,
     })
-
 
 @login_required
 def success_page(request):

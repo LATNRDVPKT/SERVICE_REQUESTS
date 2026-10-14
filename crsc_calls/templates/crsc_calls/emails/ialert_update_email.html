@@ -2,13 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>AL iAlert Update</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Call Assigned - Contact Update</title>
     <style>
-        body { font-family: Arial, sans-serif; font-size: 14px; color: #1f242e; }
-        table { border-collapse: collapse; width: 100%; max-width: 640px; }
-        th { text-align: left; background-color: rgb(240,240,240); padding: 8px; width: 40%; }
-        td { padding: 8px; word-wrap: break-word; }
+        body { font-family: Arial, sans-serif; }
+        th {
+            text-align: left;
+            background-color: rgb(240,240,240);
+            padding: 5px;
+        }
+        td {
+            padding: 5px;
+        }
         .button {
             display: inline-block;
             background-color: #ff9800;
@@ -26,48 +31,62 @@
     </style>
 </head>
 <body>
-    <div>
-        {% if al_remark == "Assigned to Danlaw – Contact Update" %}
-            <h4>Customer has re-opened Request No: {{ call.unique_id }}, and mentioned the comment {{ al_comments }}. Below are the details:</h4>
-        {% elif al_remark == "Assigned to Danlaw - new" %}
-            <h4>Customer has updated contact number on {{ call.unique_id }} as {{ al_comments }}. Below are the details:</h4>
-        {% else %}
-            <h4>AL sent an update via iAlert for call {{ call.unique_id }}. Below are the details:</h4>
-        {% endif %}
+    <div class="form-container">
+        <div class="card">
+            <div class="card-body">
+{% if al_remark == "Assigned to Danlaw – Contact Update" %}
+    <h4>
+        Customer has Re-opened For the Request No: {{ call.unique_id }},
+        and mentioned the comment {{ al_comments }}.
+        Below are the details:
+    </h4>
 
-        <table border="1" cellpadding="5" cellspacing="0">
-            <tbody>
-                <tr><th>Ticket ID</th><td>{{ call.unique_id }}</td></tr>
-                <tr><th>Complaint Type</th><td>{{ call.call_type|default:"" }}</td></tr>
-                <tr><th>I Alert Ticket No</th><td>{{ call.ialert_ticket_no|default:"" }}</td></tr>
-                <tr><th>Vehicle Availability in Workshop</th><td>{{ call.vehicle_avl_in_workshop|default:"" }}</td></tr>
-                <tr><th>Date of Complaint</th><td>{{ call.date_of_complaint|default:"" }}</td></tr>
-                <tr><th>Complaint Raised From Location</th><td>{{ call.complaint_raised_from_location|default:"" }}</td></tr>
-                <tr><th>Customer Voice</th><td>{{ call.customer_raised_issue|default:"" }}</td></tr>
-                <tr><th>Complaint Raised</th><td>{{ call.complaint_raised|default:"" }}</td></tr>
-                <tr><th>Complaint Raised By</th><td>{{ call.complaint_raised_by|default:"" }}</td></tr>
-                <tr><th>Contact Number</th><td>{{ call.contact_number|default:"" }}</td></tr>
-                <tr><th>Customer Mail ID</th><td>{{ call.customer_mail_id|default:"" }}</td></tr>
-                <tr><th>Complaint Raised Through</th><td>{{ call.complaint_raised_through|default:"" }}</td></tr>
-                <tr><th>Complaint Received By</th><td>{{ call.complaint_received_by|default:"" }}</td></tr>
-                <tr><th>VIN</th><td>{{ call.vin|default:"" }}</td></tr>
-                <tr><th>PSN</th><td>{{ call.psn|default:"" }}</td></tr>
-                <tr><th>AL Update</th><td>{{ al_remark|default:"" }}</td></tr>
-                <tr><th>Updated Contact Number Comment</th><td>{{ al_comments|default:"" }}</td></tr>
-            </tbody>
-        </table>
+{% elif al_remark == "Assigned to Danlaw - new" %}
+    <h4>
+        Customer has updated contact number ON {{ call.unique_id }}
+        as {{ al_comments }}.
+        Below are the details:
+    </h4>
+{% else %}
+    <h4>
+        AL sent an update via iAlert for call {{ call.unique_id }}.
+        Below are the details:
+    </h4>
+{% endif %}
+                <table border="1" cellpadding="5" cellspacing="0" class="table table-bordered">
+                    <tbody>
+                        <tr><th>Ticket ID</th><td>{{ call.unique_id }}</td></tr>
+                        <tr><th>Complaint Type</th><td>{{ call.call_type|default:"" }}</td></tr>
+                        <tr><th>I Alert ticket No</th><td>{{ call.ialert_ticket_no|default:"" }}</td></tr>
+                        <tr><th>Vehicle Availability in Workshop</th><td>{{ call.vehicle_avl_in_workshop|default:"" }}</td></tr>
+                        <tr><th>Date of Complaint</th><td>{{ call.date_of_complaint|default:"" }}</td></tr>
+                        <tr><th>Complaint Raised From Location</th><td>{{ call.complaint_raised_from_location|default:"" }}</td></tr>
+                        <tr><th>Customer Voice</th><td>{{ call.customer_raised_issue|default:"" }}</td></tr>
+                        <tr><th>Complaint Raised</th><td>{{ call.complaint_raised|default:"" }}</td></tr>
+                        <tr><th>Complaint Raised By</th><td>{{ call.complaint_raised_by|default:"" }}</td></tr>
+                        <tr><th>Contact Number</th><td>{{ call.contact_number|default:"" }}</td></tr>
+                        <tr><th>Customer Mail ID</th><td>{{ call.customer_mail_id|default:"" }}</td></tr>
+                        <tr><th>Complaint Raised Through</th><td>{{ call.complaint_raised_through|default:"" }}</td></tr>
+                        <tr><th>Complaint Received By</th><td>{{ call.complaint_received_by|default:"" }}</td></tr>
+                        <tr><th>VIN</th><td>{{ call.vin|default:"" }}</td></tr>
+                        <tr><th>PSN</th><td>{{ call.psn|default:"" }}</td></tr>
 
-        <p>Click the link below to fill out the second part of the form:</p>
-        <p><a href="{{ part_b_url }}" target="_blank" class="button">Fill Details</a></p>
+                        <tr><th>Updated Contact Number Comment</th><td>{{ al_comments|default:"" }}</td></tr>
+                    </tbody>
+                </table>
 
-        <div>
-            <br>
-            <b>Danlaw Technologies Service &amp; Support Team</b><br>
-            Email: crscdanlaw@danlawtechnologies.com<br>
-            Support Team - 6303908940 / 04431436579<br>
-            Online support: 09:00AM to 05:30PM, Monday to Saturday<br>
-            Thank you
-            {% if logo_base64 %}<br><img src="data:image/png;base64,{{ logo_base64 }}" alt="Danlaw Logo" style="width:150px;height:auto;">{% endif %}
+                <p>Click the link below to fill out the second part of the form:</p>
+                {% if part_b_url %}<a href="{{ part_b_url }}" target="_blank" class="button">Fill Details</a>{% endif %}
+            </div>
+            <div class="logo-section">
+                <br>
+                <b>Danlaw Technologies Service &amp; Support Team<br>
+                Email : crscdanlaw@danlawtechnologies.com<br>
+                Support Team - 6303908940 / 04431436579<br>
+                Online support : 09:00AM to 05:30PM, Monday to Saturday<br>
+                Thank you</b>
+                {% if logo_base64 %}<br><img src="data:image/png;base64,{{ logo_base64 }}" alt="Danlaw Logo" style="width:150px;height:auto;">{% endif %}
+            </div>
         </div>
     </div>
 </body>
