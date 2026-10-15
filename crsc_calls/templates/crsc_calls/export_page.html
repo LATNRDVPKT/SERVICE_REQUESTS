@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="page-title">Export CSV</div>
-<div class="page-subtitle">Pick the columns you want, then download. All columns are selected by default.</div>
+<div class="page-subtitle">Pick the columns you want, then download. The standard fields are selected by default; tick any other column you need.</div>
 
 <form method="get" action="{% url 'crsc_download_csv' %}">
     {% for pair in carried_filters_list %}

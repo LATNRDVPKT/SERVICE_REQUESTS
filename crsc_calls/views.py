@@ -4,6 +4,7 @@ import re
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.db.models.functions import Upper
@@ -18,7 +19,7 @@ import datetime
 from accounts.models import UserProfile
 from core.decorators import admin_required
 from .constants import resolve_engineer_contact, resolve_fir_pdf_recipient, RESPONSIBILITY_CHOICES
-from .forms import ManagerForm, EngineerForm, PART_A_MANDATORY_LABELS
+from .forms import ManagerForm, EngineerForm, PlantForm, PART_A_MANDATORY_LABELS
 from .models import DirectCall, FIR_CLOSURE_STATUSES, CUSTOMER_CLOSURE_STATUSES, CALL_STATUS_CHOICES
 from .services.darby import run_darby_lookup_and_save
 from .services.dashboard_stats import build_dashboard_stats
@@ -30,7 +31,8 @@ from .services.email_utils import (
 )
 from .services.feedback import make_feedback_token, read_feedback_token
 from .services.latest_update import get_latest_call_update
-from .services.report_columns import REPORT_COLUMNS, build_report_row, report_headers
+from .services.plant import PLANT_COLUMNS, PLANT_EDIT_KEYS, PLANT_LOCATIONS, PLANT_READONLY_FIELDS
+from .services.report_columns import DEFAULT_EXPORT_KEYS, REPORT_COLUMNS, build_report_row, report_headers
 from .services.tat import compute_tats
 from .services.workflow import apply_follow_up_rules, write_history_rows
 
@@ -351,7 +353,6 @@ def call_history_partial(request, call_id):
     history = call.history.all().order_by("-event_datetime")
     return render(request, "crsc_calls/partials/history_modal.html", {"call": call, "history": history})
 
-DEFAULT_EXPORT_KEYS = [key for key, _label in REPORT_COLUMNS]
 
 @login_required
 def export_page(request):
@@ -377,4 +378,87 @@ def download_csv(request):
     writer.writerow(report_headers(selected_keys))
     for call in qs:
         writer.writerow(build_report_row(call, get_latest_call_update(call), selected_keys))
+    return response
+
+
+# =============================================================================
+# Plant logins (Hyderabad / Goa)
+# =============================================================================
+def _plant_calls(request):
+    """Calls this user may see on the plant screens: a plant login gets only
+    the calls whose Faulty Device Sent to Location is their plant; an admin
+    sees every plant call (optionally narrowed with ?plant=). Anyone else is
+    refused."""
+    role = _user_role(request.user)
+    qs = DirectCall.objects.all().order_by("-date_of_complaint")
+    if role == "plant":
+        location = getattr(request.user.profile, "plant_location", "") or ""
+        return qs.filter(device_to_be_sent=location) if location else qs.none()
+    if role == "admin":
+        wanted = request.GET.get("plant")
+        if wanted in PLANT_LOCATIONS:
+            return qs.filter(device_to_be_sent=wanted)
+        return qs.filter(device_to_be_sent__in=PLANT_LOCATIONS)
+    raise PermissionDenied
+
+
+def _plant_cell(call, key):
+    value = getattr(call, key, "")
+    if value in (None, ""):
+        return ""
+    if key == "device_shipped_date":
+        return value.strftime("%d-%m-%Y")
+    return value
+
+
+@login_required
+def plant_dashboard(request):
+    qs = _apply_filters(request, _plant_calls(request))
+    page_obj = Paginator(qs, PAGE_SIZE).get_page(request.GET.get("page"))
+    rows = [
+        {"call": c, "cells": [_plant_cell(c, key) for key, _label in PLANT_COLUMNS]}
+        for c in page_obj.object_list
+    ]
+    return render(request, "crsc_calls/plant_dashboard.html", {
+        "rows": rows,
+        "columns": PLANT_COLUMNS,
+        "page_obj": page_obj,
+        "filter_qs": request.GET.urlencode(),
+        "search_field": request.GET.get("search_field", "unique_id"),
+        "search_value": request.GET.get("search_value", ""),
+        "search_field_choices": SEARCH_FIELD_CHOICES,
+        "location": getattr(request.user.profile, "plant_location", ""),
+    })
+
+
+@login_required
+def plant_form(request, call_id):
+    call = get_object_or_404(_plant_calls(request), pk=call_id)
+
+    if request.method == "POST":
+        form = PlantForm(request.POST, instance=call)
+        if form.is_valid():
+            updated = form.save(commit=False)
+            updated.save(update_fields=PLANT_EDIT_KEYS)
+            messages.success(request, f"Plant update saved for {call.unique_id}.")
+            return redirect("crsc_plant_form", call_id=call.id)
+        _flash_form_errors(request, form)
+    else:
+        form = PlantForm(instance=call)
+
+    readonly = [(label, _plant_cell(call, key)) for key, label in PLANT_READONLY_FIELDS]
+    return render(request, "crsc_calls/plant_form.html", {"form": form, "call": call, "readonly": readonly})
+
+
+@login_required
+def plant_download_csv(request):
+    qs = _apply_filters(request, _plant_calls(request))
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = (
+        f'attachment; filename="crsc_plant_export_{now().strftime("%Y%m%d_%H%M%S")}.csv"'
+    )
+    writer = csv.writer(response)
+    writer.writerow([label for _key, label in PLANT_COLUMNS])
+    for call in qs:
+        writer.writerow([_plant_cell(call, key) for key, _label in PLANT_COLUMNS])
     return response

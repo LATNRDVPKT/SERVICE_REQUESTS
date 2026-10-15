@@ -4,6 +4,7 @@ from django import forms
 
 from .constants import remark_choices_for, REMARK_COMMENT_MAP, ALL_REMARKS
 from .models import DirectCall, CALL_STATUS_CHOICES, FIR_CLOSURE_STATUSES
+from .services.plant import PLANT_EDIT_KEYS, PLANT_LABELS, PLANT_REQUIRED_WHEN_CLOSED
 
 PART_A_MANDATORY_FIELDS = ["vin", "contact_number", "complaint_assigned_to", "call_type"]
 PART_A_MANDATORY_LABELS = {
@@ -12,6 +13,16 @@ PART_A_MANDATORY_LABELS = {
     "complaint_assigned_to": "Engineer Responsible",
     "call_type": "Call Type",
 }
+
+# Faulty-device logistics / replacement follow-through. Editable (by engineers
+# and admins) only while call_status is a FIR closure status, and each field
+# locks for good as soon as it holds a value.
+FIR_FLOW_FIELDS = [
+    "faulty_device_shipped_date", "faulty_device_shipped_thru", "faulty_device_shipped_lr_details",
+    "faulty_device_reached_date", "faulty_device_confirmation", "new_device_serial_no",
+    "mapping_completed", "validity_transfer_completed", "commercial_expiry_date",
+    "new_device_fitted_in_vehicle", "new_device_working",
+]
 
 # Mandatory for every call_status except "Pending".
 NON_PENDING_MANDATORY_FIELDS = [
@@ -33,7 +44,8 @@ DATE_TIME_FIELDS = {
     "last_communication_in_darby", "S_trigger_date", "s_trigger_completion_date",
     "C_trigger_date", "c_trigger_completion_date", "date_of_closure",
 }
-DATE_FIELDS = {"vehicle_sale_date"}
+DATE_FIELDS = {"vehicle_sale_date", "faulty_device_shipped_date",
+                "faulty_device_reached_date", "commercial_expiry_date"}
 
 def _apply_uniform_widget_style(form):
     for name, field in form.fields.items():
@@ -100,7 +112,9 @@ class EngineerForm(forms.ModelForm):
     below. Every other field-level lock in this form skips them.
     """
 
-    NEVER_LOCKED_FIELDS = ("follow_up_remark", "follow_up_comment")
+    # The FIR flow fields are exempt from the whole-form engineer lock — they
+    # carry their own fill-once lock instead (see __init__).
+    NEVER_LOCKED_FIELDS = ("follow_up_remark", "follow_up_comment") + tuple(FIR_FLOW_FIELDS)
 
     class Meta:
         model = DirectCall
@@ -122,11 +136,13 @@ class EngineerForm(forms.ModelForm):
             "upload_file_01", "remarks",
             "external_modification", "device_IMEI", "device_ICCID", "device_to_be_sent",
             "dealer_address", "engineer_recommendation", "chargable_or_not",
-        ]
+            "payment_status", "hod_comment",
+        ] + FIR_FLOW_FIELDS
         widgets = {
             "remarks": forms.Textarea(attrs={"rows": 1}),
             "external_modification": forms.Textarea(attrs={"rows": 1}),
             "dealer_address": forms.Textarea(attrs={"rows": 1}),
+            "hod_comment": forms.Textarea(attrs={"rows": 1}),
             "al_updated_contact_no": forms.Textarea(attrs={"rows": 1}),
             "follow_up_comment": forms.Textarea(attrs={"rows": 1}),
         }
@@ -140,8 +156,18 @@ class EngineerForm(forms.ModelForm):
         # call_status choices — FIR closure values only for admin role
         status_choices = list(CALL_STATUS_CHOICES)
         if role != "admin":
-            status_choices = [(v, l) for v, l in status_choices if v not in FIR_CLOSURE_STATUSES]
+            # An engineer can't pick a FIR closure status, but a call an admin
+            # already moved to one must keep validating (the field is locked
+            # to its saved value).
+            current = (instance.call_status if instance and instance.pk else None)
+            status_choices = [
+                (v, l) for v, l in status_choices if v not in FIR_CLOSURE_STATUSES or v == current
+            ]
         self.fields["call_status"] = forms.ChoiceField(choices=status_choices, required=True)
+
+        # hod_comment is only visible to the manager/admin role
+        if role != "admin" and "hod_comment" in self.fields:
+            del self.fields["hod_comment"]
 
         # follow_up_remark — selectable list, with auto-fill wired to comment
         self.fields["follow_up_remark"] = forms.ChoiceField(
@@ -156,15 +182,44 @@ class EngineerForm(forms.ModelForm):
         # Pending, only admins may keep editing most fields — engineers get
         # a read-only view otherwise. Follow-Up Remark/Comment are exempt
         # from this (and every other lock in this form) at all times.
-        self.locked_for_role = (
-            role != "admin" and instance and instance.pk
-            and (instance.call_status or "Pending") != "Pending"
+        #
+        # Once the call is in a FIR closure status (FIR-Repair / FIR-Replace /
+        # FIR-Replace_Repair) the whole form is read-only for EVERY role —
+        # including Follow-Up Remark/Comment and Call Status. Only the
+        # faulty-device / replacement follow-through fields stay editable,
+        # and each of those locks once it is filled.
+        self.in_fir_flow = bool(
+            instance and instance.pk and (instance.call_status or "") in FIR_CLOSURE_STATUSES
+        )
+        self.never_locked = set(FIR_FLOW_FIELDS) if self.in_fir_flow else set(self.NEVER_LOCKED_FIELDS)
+
+        self.locked_for_role = bool(
+            self.in_fir_flow
+            or (
+                role != "admin" and instance and instance.pk
+                and (instance.call_status or "Pending") != "Pending"
+            )
         )
         if self.locked_for_role:
             for name, field in self.fields.items():
-                if name in self.NEVER_LOCKED_FIELDS:
+                if name in self.never_locked:
                     continue
                 field.disabled = True
+
+        # Fill-once lock: a FIR flow field that already holds a value is
+        # disabled, so neither the page nor a crafted POST can change it.
+        self.fir_flow_open = False
+        if instance and instance.pk:
+            for name in FIR_FLOW_FIELDS:
+                if name not in self.fields:
+                    continue
+                value = getattr(instance, name)
+                # "Working" is final only when it is Yes; a "No" can still be corrected.
+                filled = (value == "Yes") if name == "new_device_working" else value not in (None, "")
+                if filled:
+                    self.fields[name].disabled = True
+                elif (instance.call_status or "") in FIR_CLOSURE_STATUSES:
+                    self.fir_flow_open = True
 
         _apply_uniform_widget_style(self)
 
@@ -172,12 +227,20 @@ class EngineerForm(forms.ModelForm):
         cleaned = super().clean()
         instance = self.instance
 
+        # The FIR flow fields only take effect while the call is in a FIR
+        # closure status; otherwise whatever was posted is dropped.
+        status_now = (cleaned.get("call_status") or "").strip()
+        if status_now not in FIR_CLOSURE_STATUSES:
+            for name in FIR_FLOW_FIELDS:
+                if name in cleaned:
+                    cleaned[name] = getattr(instance, name)
+
         # Whole-form lock backend safety net — a crafted POST can't resurrect
         # disabled fields, so every field except Follow-Up Remark/Comment
         # (never locked) snaps back to its saved value.
         if getattr(self, "locked_for_role", False):
             for name in self.fields:
-                if name in self.NEVER_LOCKED_FIELDS:
+                if name in self.never_locked:
                     continue
                 cleaned[name] = getattr(instance, name)
             return cleaned
@@ -207,4 +270,47 @@ class EngineerForm(forms.ModelForm):
             if (cleaned.get("engineer_recommendation") or "--") in ("", "--"):
                 self.add_error("engineer_recommendation", f"Required when Call Status is {status}.")
 
+        return cleaned
+
+
+class PlantForm(forms.ModelForm):
+    """What a plant login (Hyderabad / Goa) fills in for a call whose device
+    was sent to their plant. Nothing else on the call is editable here.
+
+    * Each field locks as soon as it holds a value (Plant Status only locks
+      once it is Closed, so Pending can still be moved to Closed).
+    * Setting Plant Status to Closed requires the CoPQ, analysis, conclusion
+      and shipping fields.
+    """
+
+    class Meta:
+        model = DirectCall
+        fields = PLANT_EDIT_KEYS
+        widgets = {
+            "plant_analysis": forms.Textarea(attrs={"rows": 3}),
+            "plant_conclusion": forms.Textarea(attrs={"rows": 3}),
+            "device_shipped_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        instance = self.instance
+        # The plant only ever chooses Pending or Closed; "Not Applicable" is
+        # set automatically for calls that aren't FIR repair/replace cases.
+        self.fields["plant_status"].choices = [("Pending", "Pending"), ("Closed", "Closed")]
+        if instance and instance.pk:
+            for name, field in self.fields.items():
+                value = getattr(instance, name)
+                locked = (value == "Closed") if name == "plant_status" else value not in (None, "")
+                if locked:
+                    field.disabled = True
+        _apply_uniform_widget_style(self)
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("plant_status") == "Closed":
+            for name in PLANT_REQUIRED_WHEN_CLOSED:
+                value = cleaned.get(name)
+                if value is None or (isinstance(value, str) and not value.strip()):
+                    self.add_error(name, f"{PLANT_LABELS[name]} is required when Plant Status is Closed.")
         return cleaned

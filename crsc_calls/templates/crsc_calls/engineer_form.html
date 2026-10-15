@@ -29,6 +29,8 @@
         <div class="ro-field"><label>Engineer Responsible</label><div>{{ call.complaint_assigned_to|default:"-" }}</div></div>
         <div class="ro-field"><label>Submitted To</label><div>{{ call.submitted_to_email|default:"-" }}</div></div>
         <div class="ro-field"><label>iAlert Ticket No</label><div>{{ call.ialert_ticket_no|default:"-" }}</div></div>
+        <div class="ro-field"><label>Plant Status</label><div>{{ call.plant_status|default:"-" }}</div></div>
+        <div class="ro-field"><label>RR Responsibility</label><div>{{ call.rr_responsibility|default:"-" }}</div></div>
     </div>
 </div>
 
@@ -91,7 +93,18 @@
         <div class="card-subtitle">Shown and required when Call Status is "FIR - For approval", "FIR-Repair", "FIR-Replace" or "FIR-Replace_Repair".</div>
         <div class="form-grid">
             {% for field in form %}
-                {% if field.name|in_list:"external_modification,device_IMEI,device_ICCID,device_to_be_sent,dealer_address,,engineer_recommendation,chargable_or_not" %}
+                {% if field.name|in_list:"external_modification,device_IMEI,device_ICCID,device_to_be_sent,dealer_address,engineer_recommendation,chargable_or_not,payment_status,hod_comment" %}
+                    {% include "crsc_calls/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card" id="fir-flow-card" {% if not call.call_status|in_list:"FIR-Repair,FIR-Replace,FIR-Replace_Repair" %}hidden{% endif %}>
+        <div class="card-subtitle">Faulty device / replacement follow-through. Each field locks once it is filled.</div>
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"faulty_device_shipped_date,faulty_device_shipped_thru,faulty_device_shipped_lr_details,faulty_device_reached_date,faulty_device_confirmation,new_device_serial_no,mapping_completed,validity_transfer_completed,commercial_expiry_date,new_device_fitted_in_vehicle,new_device_working" %}
                     {% include "crsc_calls/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}
@@ -99,7 +112,7 @@
     </div>
 
     <div class="btn-row">
-        {% if not form.locked_for_role %}<button type="submit" class="btn">Save Call</button>{% endif %}
+        {% if not form.locked_for_role or form.fir_flow_open %}<button type="submit" class="btn">Save Call</button>{% endif %}
         <a href="{% url 'crsc_real_time_page' %}" class="btn secondary">Back to Dashboard</a>
     </div>
 </form>
@@ -110,10 +123,13 @@
 (function () {
     var statusField = document.getElementById("id_call_status");
     var firCard = document.getElementById("fir-fields-card");
+    var flowCard = document.getElementById("fir-flow-card");
     if (!statusField || !firCard) return;
     function toggle() {
         var firStatuses = ["FIR - For approval", "FIR-Repair", "FIR-Replace", "FIR-Replace_Repair"];
+        var flowStatuses = ["FIR-Repair", "FIR-Replace", "FIR-Replace_Repair"];
         firCard.hidden = firStatuses.indexOf(statusField.value) === -1;
+        if (flowCard) flowCard.hidden = flowStatuses.indexOf(statusField.value) === -1;
     }
     statusField.addEventListener("change", toggle);
     toggle();

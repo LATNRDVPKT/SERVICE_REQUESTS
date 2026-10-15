@@ -15,5 +15,9 @@ urlpatterns = [
     path("export/", views.export_page, name="crsc_export_page"),
     path("download-csv/", views.download_csv, name="crsc_download_csv"),
 
+    path("plant/", views.plant_dashboard, name="crsc_plant_dashboard"),
+    path("plant/download-csv/", views.plant_download_csv, name="crsc_plant_download_csv"),
+    path("plant/<int:call_id>/", views.plant_form, name="crsc_plant_form"),
+
     path("api/create-ticket/", CRSCTicketIntakeAPIView.as_view(), name="crsc_api_create_ticket"),
 ]

@@ -23,6 +23,13 @@ ADMINS = [
     ("manager", "Manager"),
 ]
 
+# Plant logins — each sees only the CRSC calls whose "Faulty Device Sent to
+# Location" is their plant, and only the plant fields.
+PLANTS = [
+    ("plant_hyderabad", "Hyderabad Plant", "Hyderabad"),
+    ("plant_goa", "Goa Plant", "Goa"),
+]
+
 ENGINEERS = [
     ("eliyas", "Eliyas"),
     ("gayadhar", "Gayadhar"),
@@ -75,6 +82,23 @@ class Command(BaseCommand):
             upsert(username, display_name, role="admin", is_staff=True)
         for username, display_name in ENGINEERS:
             upsert(username, display_name, role="engineer", is_staff=False)
+
+        for username, display_name, location in PLANTS:
+            user, is_new = User.objects.get_or_create(username=username)
+            password = None
+            if is_new or reset:
+                password = get_random_string(
+                    12, allowed_chars="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
+                )
+                user.set_password(password)
+                user.is_staff = False
+                user.is_superuser = False
+                user.save()
+            UserProfile.objects.update_or_create(
+                user=user,
+                defaults={"role": "plant", "display_name": display_name, "plant_location": location},
+            )
+            created_rows.append((username, password or "(unchanged)", f"Plant - {location}"))
 
         lines = ["username,password,role"] + [",".join(row) for row in created_rows]
         report = "\n".join(lines)

@@ -62,6 +62,9 @@ CUSTOMER_CLOSURE_STATUSES = {"Closed", "Closed-CI", "Resolved", "Auto-Resolved",
 ENGINEER_RECOMMENDATION_CHOICES = [
     ("--", "--"), ("Repair", "Repair"), ("Replace", "Replace"), ("Replace_Repair", "Replace_Repair"),
 ]
+PAYMENT_STATUS_CHOICES = [("--", "--"), ("Paid", "Paid"), ("Not paid", "Not paid")]
+NOT_APPLICABLE = "Not Applicable"
+PLANT_STATUS_CHOICES = [(NOT_APPLICABLE, NOT_APPLICABLE), ("Pending", "Pending"), ("Closed", "Closed")]
 CHARGEABLE_CHOICES = [("--", "--"), ("Yes", "Yes"), ("No", "No")]
 
 DEVICE_SENT_LOCATION_CHOICES = [
@@ -161,6 +164,8 @@ class DirectCall(models.Model):
     engineer_recommendation = _char(40, choices=ENGINEER_RECOMMENDATION_CHOICES, default="--")
     chargable_or_not = _char(40, choices=CHARGEABLE_CHOICES, default="--", verbose_name="Chargeable or Not")
     remarks = models.TextField(null=True, blank=True)
+    payment_status = _char(10, choices=PAYMENT_STATUS_CHOICES)
+    hod_comment = models.TextField(null=True, blank=True, verbose_name="HOD Comment")
 
     # FIR — For Approval sub-fields (mandatory only when call_status is FIR)
     external_modification = models.TextField(null=True, blank=True)
@@ -170,6 +175,41 @@ class DirectCall(models.Model):
         50, choices=DEVICE_SENT_LOCATION_CHOICES, verbose_name="Faulty Device Sent to Location"
     )
     dealer_address = models.TextField(null=True, blank=True)
+
+    # ------------------------------------------------------------------
+    # Faulty-device logistics and replacement/repair follow-through — shown
+    # on Part-B once call_status is FIR-Repair / FIR-Replace /
+    # FIR-Replace_Repair. Each field locks as soon as it has a value.
+    # ------------------------------------------------------------------
+    faulty_device_shipped_date = models.DateField(null=True, blank=True, verbose_name="Faulty Device Shipped Date")
+    faulty_device_shipped_thru = _char(100, verbose_name="Faulty Device Shipped Thru")
+    faulty_device_shipped_lr_details = _char(200, verbose_name="Faulty Device Shipped LR Details")
+    faulty_device_reached_date = models.DateField(null=True, blank=True, verbose_name="Faulty Device Reached Date")
+    faulty_device_confirmation = _char(200, verbose_name="Faulty Device Confirmation from Plant")
+    new_device_serial_no = _char(50, verbose_name="Repaired/New Device Serial No")
+    validity_transfer_completed = _char(3, choices=YES_NO_CHOICES, verbose_name="Validity Transfer Completed")
+    mapping_completed = _char(3, choices=YES_NO_CHOICES, verbose_name="Mapping Completed")
+    commercial_expiry_date = models.DateField(null=True, blank=True, verbose_name="Commercial Expiry Date")
+    new_device_fitted_in_vehicle = _char(3, choices=YES_NO_CHOICES, verbose_name="Repaired/New Device Fitted in Vehicle")
+    new_device_working = _char(3, choices=YES_NO_CHOICES, verbose_name="Repaired/New Device Working")
+
+    # Who has to act next on a FIR repair/replace call — recomputed on every
+    # save, see compute_rr_responsibility().
+    rr_responsibility = _char(100, verbose_name="RR Responsibility")
+
+    # ------------------------------------------------------------------
+    # Plant update — filled in by the plant login (Hyderabad / Goa) that the
+    # faulty device was sent to. See the /crsc/plant/ screens.
+    # ------------------------------------------------------------------
+    plant_status = _char(20, choices=PLANT_STATUS_CHOICES, default=NOT_APPLICABLE, verbose_name="Plant Status")
+    copq_labour = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="CoPQ Labour")
+    copq_material = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="CoPQ Material")
+    materials_used = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="Materials Used")
+    plant_analysis = models.TextField(null=True, blank=True, verbose_name="Plant Analysis")
+    plant_conclusion = models.TextField(null=True, blank=True, verbose_name="Plant Conclusion")
+    device_shipped_date = models.DateField(null=True, blank=True, verbose_name="Device Shipped Date")
+    device_shipped_through = _char(100, verbose_name="Device Shipped Through")
+    device_shipped_lr_no = _char(100, verbose_name="Device Shipped LR No")
 
     follow_up_level = _char(2, choices=FOLLOW_UP_LEVEL_CHOICES, verbose_name="Follow-Up Level")
     follow_up_remark = _char(150, verbose_name="Follow-Up Remark")
@@ -191,9 +231,47 @@ class DirectCall(models.Model):
     d2_tat = _char(20)
     total_tat = _char(20)
 
+    def compute_rr_responsibility(self):
+        """Who has to act next on a FIR repair/replace call. The first
+        unfinished step wins:
+          1. Faulty Device Shipped LR Details not updated -> the engineer
+          2. Faulty Device Confirmation from Plant not updated -> Manager
+          3. Plant Status still Pending -> the plant (its location name)
+          4. Repaired/New Device Working not updated -> Manager
+        "Closed" once everything is done; "Not Applicable" when the call isn't
+        in a FIR closure status."""
+        if (self.call_status or "") not in FIR_CLOSURE_STATUSES:
+            return NOT_APPLICABLE
+
+        def blank(value):
+            return value is None or str(value).strip() == ""
+
+        if blank(self.faulty_device_shipped_lr_details):
+            return (self.complaint_assigned_to or "").strip() if (self.complaint_assigned_to or "--") != "--" else "Engineer"
+        if blank(self.faulty_device_confirmation):
+            return "Manager"
+        if (self.plant_status or "Pending") != "Closed":
+            return self.device_to_be_sent or "Plant"
+        if blank(self.new_device_working):
+            return "Manager"
+        return "Closed"
+
     def save(self, *args, **kwargs):
         if not self.unique_id:
             self.unique_id = self._generate_unique_id()
+        # Plant Status only means something once the call is a FIR repair /
+        # replace case: Pending from then on, "Not Applicable" before that.
+        in_fir = (self.call_status or "") in FIR_CLOSURE_STATUSES
+        if in_fir and self.plant_status in (None, "", NOT_APPLICABLE):
+            self.plant_status = "Pending"
+        elif not in_fir and self.plant_status in (None, "", "Pending"):
+            self.plant_status = NOT_APPLICABLE
+        self.rr_responsibility = self.compute_rr_responsibility()
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            extra = [f for f in ("plant_status", "rr_responsibility") if f not in update_fields]
+            if extra:
+                kwargs["update_fields"] = list(update_fields) + extra
         super().save(*args, **kwargs)
 
     def _generate_unique_id(self):

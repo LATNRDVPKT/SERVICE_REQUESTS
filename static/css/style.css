@@ -294,3 +294,5 @@ table.rt-table a.eye-icon { cursor: pointer; text-decoration: none; margin-right
 
 .diff-table td.old-val { color: var(--danger); text-decoration: line-through; }
 .diff-table td.new-val { color: var(--success); font-weight: 600; }
+
+[hidden] { display: none !important; }

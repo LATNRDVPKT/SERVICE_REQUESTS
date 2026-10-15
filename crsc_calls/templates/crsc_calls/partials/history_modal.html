@@ -1,5 +1,6 @@
 {% load crsc_extras %}
 <h3>History — {{ call.unique_id }} ({{ call.vin }})</h3>
+{% if call.rr_responsibility %}<p><strong>RR Responsibility:</strong> {{ call.rr_responsibility }}</p>{% endif %}
 <table class="rt-table" style="white-space: normal;">
     <thead>
         <tr>

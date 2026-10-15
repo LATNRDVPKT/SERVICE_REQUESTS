@@ -8,7 +8,8 @@ import re
 
 from django.utils.dateformat import format as django_date_format
 
-DATE_FIELDS = {"vehicle_sale_date"}
+DATE_FIELDS = {"vehicle_sale_date", "device_shipped_date", "faulty_device_shipped_date",
+                "faulty_device_reached_date", "commercial_expiry_date"}
 DATETIME_FIELDS = {
     "date_of_complaint", "request_received_timestamp", "date_of_closure",
     "activation_start_date", "activation_end_date",
@@ -48,7 +49,11 @@ REPORT_COLUMNS = (
         ("psn", "PSN"),
         ("complaint_assigned_to", "Complaint Assigned To"),
         ("call_status", "Call Status"),
+        ("responsibility", "Responsibility"),
+
         ("date_of_closure", "Date of Closure"),
+        ("rr_responsibility", "RR Responsibility"),
+
         ("ialert_ticket_no", "Ticket No"),
         ("request_received_timestamp", "Mail Rec Timestamp"),
         ("ialert_remarks", "Remarks in iAlert"),
@@ -120,13 +125,66 @@ REPORT_COLUMNS = (
         ("follow_up_remark", "Follow-Up Remark"),
         ("follow_up_comment", "Follow-Up Comment"),
         ("follow_up_level", "Follow-Up"),
-        ("responsibility", "Responsibility"),
         ("S_trigger_date", "S Trigger Date"),
         ("s_trigger_completion_date", "S Trigger Completion Date"),
         ("C_trigger_date", "C Trigger Date"),
         ("c_trigger_completion_date", "C Trigger Completion Date"),
+        ("payment_status", "Payment Status"),
+        ("hod_comment", "HOD Comment"),
+        # ---- faulty-device logistics / replacement follow-through ----
+        ("faulty_device_shipped_date", "Faulty Device Shipped Date"),
+        ("faulty_device_shipped_thru", "Faulty Device Shipped Thru"),
+        ("faulty_device_shipped_lr_details", "Faulty Device Shipped LR Details"),
+        ("faulty_device_reached_date", "Faulty Device Reached Date"),
+        ("faulty_device_confirmation", "Faulty Device Confirmation from Plant"),
+        ("new_device_serial_no", "Repaired/New Device Serial No"),
+        ("validity_transfer_completed", "Validity Transfer Completed"),
+        ("mapping_completed", "Mapping Completed"),
+        ("commercial_expiry_date", "Commercial Expiry Date"),
+        ("new_device_fitted_in_vehicle", "Repaired/New Device Fitted in Vehicle"),
+        ("new_device_working", "Repaired/New Device Working"),
+        # ---- plant update ----
+        ("plant_status", "Plant Status"),
+        ("copq_labour", "CoPQ Labour"),
+        ("copq_material", "CoPQ Material"),
+        ("materials_used", "Materials Used"),
+        ("plant_analysis", "Plant Analysis"),
+        ("plant_conclusion", "Plant Conclusion"),
+        ("device_shipped_date", "Device Shipped Date"),
+        ("device_shipped_through", "Device Shipped Through"),
+        ("device_shipped_lr_no", "Device Shipped LR No"),
     ]
 )
+
+
+# Columns ticked by default on the export picker (and used when a download is
+# requested with nothing ticked). Everything else in REPORT_COLUMNS can still
+# be ticked on the page.
+DEFAULT_EXPORT_KEYS = [
+    "unique_id", "date_of_complaint", "call_type",
+    "vin", "psn", "complaint_assigned_to",
+    "call_status", "date_of_closure", "ialert_ticket_no",
+    "request_received_timestamp", "ialert_remarks", "complaint_raised_from_location",
+    "customer_raised_issue", "complaint_raised", "complaint_raised_by",
+    "contact_number", "customer_mail_id", "vehicle_avl_in_workshop",
+    "complaint_raised_through", "end_customer_mail_id", "device_model",
+    "telco_status", "active_profile", "activation_start_date",
+    "activation_end_date", "vehicle_sale_date", "first_communication_in_darby",
+    "last_communication_in_darby", "card_status", "main_battery_voltage",
+    "exist_software", "al_mfg_plant", "nrd_category",
+    "vehicle_type", "engine_type", "state",
+    "kilometers_hours", "vehicle_running_location", "updated_software",
+    "issue_identified", "issue_analysis", "engineer_recommendation",
+    "upload_file_01", "chargable_or_not", "remarks",
+    "external_modification", "device_IMEI", "device_ICCID",
+    "device_to_be_sent", "dealer_address", "dealer_name",
+    "follow_up_engineer", "Latency_7_days", "V_packet_7_days",
+    "Latency_3_months", "V_packet_3_months", "veh_reg_no",
+    "veh_model", "upload_file", "al_updated_contact_no",
+    "follow_up_remark", "follow_up_comment", "follow_up_level",
+    "responsibility", "S_trigger_date", "s_trigger_completion_date",
+    "C_trigger_date", "c_trigger_completion_date", "hod_comment",
+]
 
 
 def _fmt_dt(value):

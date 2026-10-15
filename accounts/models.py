@@ -4,6 +4,13 @@ from django.db import models
 ROLE_CHOICES = [
     ("admin", "Admin"),
     ("engineer", "Engineer"),
+    ("plant", "Plant"),
+]
+
+PLANT_LOCATION_CHOICES = [
+    ("", "---"),
+    ("Hyderabad", "Hyderabad"),
+    ("Goa", "Goa"),
 ]
 
 
@@ -18,6 +25,9 @@ class UserProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="engineer")
     display_name = models.CharField(max_length=150)
+    # Only for role="plant": the plant this login belongs to. A plant user
+    # sees just the CRSC calls whose "Faulty Device Sent to Location" matches.
+    plant_location = models.CharField(max_length=20, choices=PLANT_LOCATION_CHOICES, blank=True, default="")
 
     class Meta:
         ordering = ["display_name"]

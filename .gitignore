@@ -10,3 +10,5 @@ db.sqlite3
 seeded_credentials.txt
 /logs/*.log*
 !/logs/.gitkeep
+plant_credentials.txt
+team_credentials.txt

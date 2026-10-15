@@ -20,7 +20,7 @@
     </a>
     <a class="module-card" href="{% url 'trip_app:upload' %}">
         <h3>Trip Analysis</h3>
-        <p>Upload packet-log CSV file and get a per-trip, per-time-range latency and packet summary in Excel.</p>
+        <p>Upload packet-log CSV file and get a Trip wise summary.</p>
     </a>
     {% if user.profile.role == 'admin' %}
     <a class="module-card" href="{% url 'billing_real_time_page' %}">

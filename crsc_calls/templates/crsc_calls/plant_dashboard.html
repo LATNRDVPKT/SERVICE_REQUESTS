@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Plant Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-title">Plant Dashboard{% if location %} — {{ location }}{% endif %}</div>
+
+<form method="get" class="toolbar" action="{% url 'crsc_plant_dashboard' %}">
+    <select class="form-control" name="search_field">
+        {% for value, label in search_field_choices %}
+            <option value="{{ value }}" {% if value == search_field %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <input class="form-control searchbox" type="text" name="search_value" value="{{ search_value }}"
+           placeholder="Search by selected field">
+    <button type="submit" class="btn">Search</button>
+    <div class="spacer"></div>
+    <a class="btn secondary" href="{% url 'crsc_plant_download_csv' %}?{{ filter_qs }}">Download CSV</a>
+</form>
+
+<div class="table-wrap">
+<table class="rt-table">
+    <thead>
+        <tr>
+            {% for key, label in columns %}<th>{{ label }}</th>{% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+        <tr>
+            <td><a href="{% url 'crsc_plant_form' row.call.id %}">{{ row.call.unique_id }}</a></td>
+            {% for cell in row.cells|slice:"1:" %}<td>{{ cell|default:"" }}</td>{% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="{{ columns|length }}">No calls have been sent to this plant yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<div class="pagination">
+    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&{{ filter_qs }}">Prev</a>{% endif %}
+    <span class="current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&{{ filter_qs }}">Next</a>{% endif %}
+</div>
+{% endblock %}
