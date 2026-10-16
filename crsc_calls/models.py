@@ -26,6 +26,7 @@ CALL_TYPE_CHOICES = [
     ("", "Please Select"),
     ("iAlert Call", "iAlert Call"),
     ("Direct Call", "Direct Call"),
+    ("Plant Call", "Plant Call"),    
     ("others", "Others"),
 ]
 
@@ -33,10 +34,10 @@ YES_NO_CHOICES = [("", "Please Select"), ("Yes", "Yes"), ("No", "No")]
 
 COMPLAINT_RAISED_CHOICES = [
     ("", "Please Select"), ("Customer", "Customer"), ("Dealer", "Dealer"),
-    ("AL", "AL"), ("iAlert", "iAlert"), ("others", "Others"),
+    ("AL", "AL"), ("Plant", "Plant"), ("others", "Others"),
 ]
 COMPLAINT_RAISED_THROUGH_CHOICES = [
-    ("", "Please Select"), ("Call", "Call"), ("E-mail", "E-mail"),
+    ("", "Please Select"), ("Phone Call", "Phone Call"), ("E-mail", "E-mail"),
     ("iAlert Portal", "iAlert Portal"), ("I-Alert PD API", "I-Alert PD API"), ("others", "Others"),
 ]
 
