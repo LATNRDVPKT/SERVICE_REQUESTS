@@ -44,7 +44,7 @@ DATE_TIME_FIELDS = {
     "last_communication_in_darby", "S_trigger_date", "s_trigger_completion_date",
     "C_trigger_date", "c_trigger_completion_date", "date_of_closure",
 }
-DATE_FIELDS = {"vehicle_sale_date", "faulty_device_shipped_date",
+DATE_FIELDS = {"next_follow_up_exp_date", "vehicle_sale_date", "faulty_device_shipped_date",
                 "faulty_device_reached_date", "commercial_expiry_date"}
 
 def _apply_uniform_widget_style(form):
@@ -71,8 +71,8 @@ class ManagerForm(forms.ModelForm):
             "date_of_complaint", "request_received_timestamp","complaint_raised_from_location", "customer_raised_issue",
             "complaint_raised", "complaint_raised_by", "contact_number", "customer_mail_id",
             "vehicle_avl_in_workshop", "complaint_raised_through",
-            "vin", "psn", "complaint_assigned_to", "ialert_remarks",
-            "upload_file", "call_type", "ialert_ticket_no",
+            "vin", "psn", "complaint_assigned_to","call_type", "ialert_ticket_no", "ialert_remarks",
+            "upload_file"
         ]
         widgets = {
             "customer_raised_issue": forms.Textarea(attrs={"rows": 1}),
@@ -121,7 +121,8 @@ class EngineerForm(forms.ModelForm):
         # Exactly the fields engineer_form.html renders — a field in here that
         # isn't on the page would be blanked on every save.
         fields = [
-            "follow_up_remark", "follow_up_comment", "call_status", "al_updated_contact_no",
+            "al_updated_contact_no","follow_up_remark", "follow_up_comment","next_follow_up_exp_date",
+            "call_status", 
             "date_of_closure",
             "end_customer_mail_id", "veh_reg_no", "vehicle_type", "engine_type",
             "activation_start_date", "activation_end_date", "vehicle_sale_date",
@@ -145,6 +146,11 @@ class EngineerForm(forms.ModelForm):
             "hod_comment": forms.Textarea(attrs={"rows": 1}),
             "al_updated_contact_no": forms.Textarea(attrs={"rows": 1}),
             "follow_up_comment": forms.Textarea(attrs={"rows": 1}),
+            "issue_analysis" : forms.Textarea(attrs={"rows": 1}),
+            "Latency_7_days": forms.Textarea(attrs={"rows": 1}),
+            "V_packet_7_days": forms.Textarea(attrs={"rows": 1}),
+            "Latency_3_months": forms.Textarea(attrs={"rows": 1}),
+            "V_packet_3_months": forms.Textarea(attrs={"rows": 1}),
         }
 
     def __init__(self, *args, role="engineer", call_type=None, **kwargs):

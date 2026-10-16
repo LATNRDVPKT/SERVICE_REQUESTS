@@ -26,7 +26,8 @@ CALL_TYPE_CHOICES = [
     ("", "Please Select"),
     ("iAlert Call", "iAlert Call"),
     ("Direct Call", "Direct Call"),
-    ("Plant Call", "Plant Call"),    
+    ("Plant Call", "Plant Call"),  
+    ("Switch Call", "Switch Call"),  
     ("others", "Others"),
 ]
 
@@ -51,6 +52,8 @@ CALL_STATUS_CHOICES = [
     ("Resolved", "Resolved"),
     ("Auto-Resolved", "Auto-Resolved"),
     ("D1-D2-D3 Completed", "D1-D2-D3 Completed"),
+    ("Cancelled", "Cancelled"),
+
     ("FIR - For approval", "FIR - For approval"),
     ("FIR-Repair", "FIR-Repair"),
     ("FIR-Replace", "FIR-Replace"),
@@ -111,12 +114,11 @@ class DirectCall(models.Model):
     submitted_to_email = models.EmailField(null=True, blank=True, verbose_name="Submitted To Email")
     ialert_remarks = models.TextField(max_length=1000, null=True, blank=True, verbose_name="iAlert Remarks")
     engineer_contact_number = _char(10, validators=[CONTACT_NUMBER_VALIDATOR])
-    upload_file = models.FileField(upload_to="crsc_uploads/", null=True, blank=True, verbose_name="Upload File")
     call_type = _char(50, choices=CALL_TYPE_CHOICES, verbose_name="Call Type")
     ialert_ticket_no = _char(50, verbose_name="iAlert Ticket No")
-    # ------------------------------------------------------------------
-    # Part-B — engineer / Darby-sourced vehicle & device data
-    # ------------------------------------------------------------------
+
+    upload_file = models.FileField(upload_to="crsc_uploads/", null=True, blank=True, verbose_name="Upload File")
+
     end_customer_mail_id = models.EmailField(null=True, blank=True, verbose_name="Additional Customer Mail ID")
     veh_reg_no = _char(100, verbose_name="Vehicle Regn No")
     vehicle_type = _char(100)
@@ -150,7 +152,8 @@ class DirectCall(models.Model):
     exist_software = _char(100, verbose_name="Existing Software")
     updated_software = _char(100)
     issue_identified = _char(100)
-    issue_analysis = _char(200)
+    issue_analysis = _char(200, verbose_name="Final Analysis")
+    issue_analysis = models.TextField(max_length=200, null=True, blank=True, verbose_name="Final Analysis")
     dealer_name = _char(200)
     al_mfg_plant = _char(100)
     nrd_category = _char(100)
@@ -177,11 +180,7 @@ class DirectCall(models.Model):
     )
     dealer_address = models.TextField(null=True, blank=True)
 
-    # ------------------------------------------------------------------
-    # Faulty-device logistics and replacement/repair follow-through — shown
-    # on Part-B once call_status is FIR-Repair / FIR-Replace /
-    # FIR-Replace_Repair. Each field locks as soon as it has a value.
-    # ------------------------------------------------------------------
+
     faulty_device_shipped_date = models.DateField(null=True, blank=True, verbose_name="Faulty Device Shipped Date")
     faulty_device_shipped_thru = _char(100, verbose_name="Faulty Device Shipped Thru")
     faulty_device_shipped_lr_details = _char(200, verbose_name="Faulty Device Shipped LR Details")
@@ -313,7 +312,7 @@ class DirectCallUpdate(models.Model):
     remark = models.TextField(blank=True, null=True)
     comment = models.TextField(blank=True, null=True)
     event_datetime = models.DateTimeField(blank=True, null=True, db_index=True)
-    next_follow_up_exp_date = models.DateTimeField(blank=True, null=True)
+    next_follow_up_exp_date = models.DateField(blank=True, null=True)
     al_updated_contact_no = models.TextField(blank=True, null=True)
     responsibility = models.CharField(max_length=50, blank=True, null=True)
     engineer = models.CharField(max_length=150, blank=True, null=True)

@@ -152,9 +152,9 @@ CRSC_CUSTOMER_CC = [
 # values until real ones are supplied.
 # ---------------------------------------------------------------------------
 ENGINEER_CONTACT_MAP = {
-    "Eliyas": {"email": "eliasp@danlawtech.com", "phone": "8675933448"},
+    "Eliyas": {"email": "eliyasp@danlawtech.com", "phone": "8675933448"},
     "Yoga": {"email": "yoganandam@danlawtech.com", "phone": "7358035825"},
-    "eliyas": {"email": "eliasp@danlawtech.com", "phone": "8675933448"},
+    "eliyas": {"email": "eliyasp@danlawtech.com", "phone": "8675933448"},
 
     "Dilip": {"email": "dilipkumarn@danlawtech.com", "phone": "8667228349"},
     "Narendra": {"email": "naredrareddyg@danlawtech.com", "phone": "8438121252"},
