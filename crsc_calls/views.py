@@ -22,7 +22,7 @@ from .constants import resolve_engineer_contact, resolve_fir_pdf_recipient, RESP
 from .forms import ManagerForm, EngineerForm, PlantForm, PART_A_MANDATORY_LABELS
 from .models import DirectCall, FIR_CLOSURE_STATUSES, CUSTOMER_CLOSURE_STATUSES, CALL_STATUS_CHOICES
 from .services.darby import run_darby_lookup_and_save
-from .services.dashboard_stats import build_dashboard_stats
+from .services.dashboard_stats import build_dashboard_stats, call_type_values
 from .services.ialert import push_follow_up_to_ialert, IAlertPushError
 from .services.email_utils import (
     send_assignment_email, send_customer_email, send_fir_approval_email,
@@ -270,7 +270,7 @@ def _apply_filters(request, qs):
     if call_status:
         qs = qs.filter(call_status=call_status)
     if call_type:
-        qs = qs.filter(call_type=call_type)
+        qs = qs.filter(call_type__in=call_type_values(call_type))
     if engineer:
         qs = qs.filter(complaint_assigned_to=engineer)
     if responsibility:

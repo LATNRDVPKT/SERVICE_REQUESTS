@@ -29,6 +29,7 @@
         <option value="">All Call Types</option>
         <option value="ialert_call" {% if call_type == "ialert_call" %}selected{% endif %}>iAlert Call</option>
         <option value="direct_call" {% if call_type == "direct_call" %}selected{% endif %}>Direct Call</option>
+        <option value="plant_call" {% if call_type == "plant_call" %}selected{% endif %}>Plant Call</option>
     </select>
     <select class="form-control" name="engineer">
         <option value="">All Engineers</option>
@@ -61,7 +62,7 @@
 
 {% block extra_scripts %}
 <script>
-window._crscCharts = { ialertBar: null, directBar: null };
+window._crscCharts = { ialertBar: null, directBar: null, plantBar: null };
 
 // Draws each bar/slice's value directly on the chart (no external plugin —
 // vendored locally like chart.umd.min.js, so this stays offline-friendly).
@@ -99,6 +100,7 @@ function renderCrscCharts() {
 
     if (window._crscCharts.ialertBar) window._crscCharts.ialertBar.destroy();
     if (window._crscCharts.directBar) window._crscCharts.directBar.destroy();
+    if (window._crscCharts.plantBar) window._crscCharts.plantBar.destroy();
 
     const ialertCtx = document.getElementById("crsc-ialert-status-chart");
     if (ialertCtx) {
@@ -114,6 +116,15 @@ function renderCrscCharts() {
         window._crscCharts.directBar = new Chart(directCtx, {
             type: "bar",
             data: { labels: stats.direct_status.labels, datasets: [{ label: "Calls", data: stats.direct_status.values, backgroundColor: "#2f6f4f" }] },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+            plugins: [crscDataLabelsPlugin],
+        });
+    }
+    const plantCtx = document.getElementById("crsc-plant-status-chart");
+    if (plantCtx) {
+        window._crscCharts.plantBar = new Chart(plantCtx, {
+            type: "bar",
+            data: { labels: stats.plant_status.labels, datasets: [{ label: "Calls", data: stats.plant_status.values, backgroundColor: "#8a5a14" }] },
             options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
             plugins: [crscDataLabelsPlugin],
         });

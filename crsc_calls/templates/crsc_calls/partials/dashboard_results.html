@@ -48,9 +48,17 @@
             <div class="stat-sub"><span class="stat-sub-label">Completed</span><span class="stat-sub-value">{{ stats.direct_completed }}</span></div>
         </div>
     </div>
+    <div class="stat-card">
+        <div class="stat-label">Plant Call</div>
+        <div class="stat-subrow">
+            <div class="stat-sub"><span class="stat-sub-label">Received</span><span class="stat-sub-value">{{ stats.plant_received }}</span></div>
+            <div class="stat-sub"><span class="stat-sub-label">Completed</span><span class="stat-sub-value">{{ stats.plant_completed }}</span></div>
+        </div>
+    </div>
 </div>
 
 <div class="chart-row">
     <div class="chart-box"><h4>I Alert Calls (Status)</h4><canvas id="crsc-ialert-status-chart"></canvas></div>
     <div class="chart-box"><h4>Direct Calls (Status)</h4><canvas id="crsc-direct-status-chart"></canvas></div>
+    <div class="chart-box"><h4>Plant Calls (Status)</h4><canvas id="crsc-plant-status-chart"></canvas></div>
 </div>

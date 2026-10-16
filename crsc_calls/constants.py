@@ -125,6 +125,7 @@ def get_responsibility(source_field, remark):
     """
     if source_field == "al_updated_contact_no":
         return "DANLAW"
+
     return RESPONSIBILITY_MAP.get((remark or "").strip().upper(), "")
 
 

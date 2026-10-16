@@ -49,7 +49,7 @@ VEHICLE_TYPE_CHOICES = [
 ]
 
 ISSUE_IDENTIFIED_CHOICES = [
-    ("", "-- Select Issue Identified --"),
+    ("", "Please Select"),
     ("Not Powering ON", "Not Powering ON"),
     ("No Periodic-Data", "No Periodic-Data"),
     ("100% V Packet", "100% V Packet"),
@@ -135,18 +135,18 @@ class DirectCall(models.Model):
     contact_number = _char(10, validators=[CONTACT_NUMBER_VALIDATOR], verbose_name="Contact Number")
     customer_mail_id = _char(
         500, verbose_name="Customer Mail ID",
-        help_text="Multiple e-mails separated by semicolon (e.g. a@x.com;b@x.com)",
+        help_text="Multiple e-mails separated by semicolon (e.g. a@x.com;b@x.com)"
     )
     vehicle_avl_in_workshop = _char(3, choices=YES_NO_CHOICES, verbose_name="Vehicle Available in Workshop")
     complaint_raised_through = _char(50, choices=COMPLAINT_RAISED_THROUGH_CHOICES, verbose_name="Complaint Raised Through")
-    complaint_received_by = _char(50)
+    complaint_received_by = _char(50,verbose_name="Complaint Received By")
     vin = _char(17, validators=[VIN_VALIDATOR], verbose_name="VIN")
-    psn = _char(10, validators=[PSN_VALIDATOR], verbose_name="Faulty Device PSN Number")
+    psn = _char(10, validators=[PSN_VALIDATOR], verbose_name="Faulty Device PSN")
     complaint_assigned_to = _char(100, verbose_name="Engineer Responsible")
     assigned_date = _dt(verbose_name="Assigned Date")
-    submitted_to_email = models.EmailField(null=True, blank=True, verbose_name="Submitted To Email")
+    submitted_to_email = models.EmailField(null=True, blank=True, verbose_name="Engineer Email")
     ialert_remarks = models.TextField(max_length=1000, null=True, blank=True, verbose_name="iAlert Remarks")
-    engineer_contact_number = _char(10, validators=[CONTACT_NUMBER_VALIDATOR])
+    engineer_contact_number = _char(10, validators=[CONTACT_NUMBER_VALIDATOR], verbose_name="Engineer Contact Number")
     call_type = _char(50, choices=CALL_TYPE_CHOICES, verbose_name="Call Type")
     ialert_ticket_no = _char(50, verbose_name="iAlert Ticket No")
 
@@ -154,28 +154,28 @@ class DirectCall(models.Model):
 
     end_customer_mail_id = models.EmailField(null=True, blank=True, verbose_name="Additional Customer Mail ID")
     veh_reg_no = _char(100, verbose_name="Vehicle Regn No")
-    vehicle_type = _char(100, choices=VEHICLE_TYPE_CHOICES)
-    vehicle_running_location = _char(100)
-    state = _char(100)
-    device_model = _char(100)
-    telco_status = _char(50)
-    active_profile = _char(50)
-    activation_start_date = _dt()
-    activation_end_date = _dt()
-    vehicle_sale_date = models.DateField(null=True, blank=True)
-    first_communication_in_darby = _dt()
-    last_communication_in_darby = _dt()
-    S_trigger_date = _dt(verbose_name="S Trigger Date")
-    s_trigger_completion_date = _dt()
-    C_trigger_date = _dt(verbose_name="C Trigger Date")
+    vehicle_type = _char(100, choices=VEHICLE_TYPE_CHOICES, verbose_name="Vehicle Type")
+    vehicle_running_location = _char(100, verbose_name="Vehicle Running Location")
+    state = _char(100, verbose_name="State")
+    device_model = _char(100, verbose_name="Device Model")
+    telco_status = _char(50, verbose_name="Telco Status")
+    active_profile = _char(50, verbose_name="Active Profile")
+    activation_start_date = _dt(verbose_name="Activation Start Date")
+    activation_end_date = _dt(verbose_name="Activation End Date")
+    vehicle_sale_date = models.DateField(null=True, blank=True, verbose_name="Vehicle Sale Date")
+    first_communication_in_darby = _dt(verbose_name="First Communication in Darby")
+    last_communication_in_darby = _dt(verbose_name="Last Communication in Darby")
+    S_trigger_date = _dt(verbose_name="S Trigger Req Date")
+    s_trigger_completion_date = _dt(verbose_name="S Trigger Completion Date")
+    C_trigger_date = _dt(verbose_name="C Trigger Req Date")
     c_trigger_completion_date = _dt(verbose_name="C Trigger Completion Date")
     kilometers_hours = models.IntegerField(null=True, blank=True,verbose_name="Kilometers / Hours")
-    main_battery_voltage = models.FloatField(null=True, blank=True, default=0)
+    main_battery_voltage = models.FloatField(null=True, blank=True, default=0,verbose_name="Main Battery Voltage")
     veh_model = _char(100, verbose_name="Vehicle Model")
-    engine_type = _char(100)
+    engine_type = _char(100, verbose_name="Engine Type")
 
-    call_status = _char(50, choices=CALL_STATUS_CHOICES, default="Pending")
-    date_of_closure = _dt()
+    call_status = _char(50, choices=CALL_STATUS_CHOICES, default="Pending", verbose_name="Call Status")
+    date_of_closure = _dt(verbose_name="Date of Closure")
     rating = models.IntegerField(null=True, blank=True, verbose_name="Rating")
     customer_feedback = models.TextField(max_length=250, null=True, blank=True, verbose_name="Customer Feedback")
     customer_confirmation = _char(20, verbose_name="Customer Confirmation")
@@ -183,14 +183,14 @@ class DirectCall(models.Model):
     feedback_submission_datetime = _dt(verbose_name="Feedback Submission Datetime")
     feedback_requested_at = _dt(verbose_name="Feedback Requested At")
     exist_software = _char(100, verbose_name="Existing Software")
-    updated_software = _char(100)
-    issue_identified = _char(100, choices=ISSUE_IDENTIFIED_CHOICES)
+    updated_software = _char(100, verbose_name="Updated Software")
+    issue_identified = _char(100, choices=ISSUE_IDENTIFIED_CHOICES, verbose_name="Issue Identified")
     issue_analysis = _char(200, verbose_name="Final Analysis")
     issue_analysis = models.TextField(max_length=200, null=True, blank=True, verbose_name="Final Analysis")
-    dealer_name = _char(200)
-    al_mfg_plant = _char(100)
-    nrd_category = _char(100)
-    card_status = _char(100)
+    dealer_name = _char(200, verbose_name="Dealer Name")
+    al_mfg_plant = _char(100, verbose_name="Manufacturer Plant")
+    nrd_category = _char(100, verbose_name="NRD Category")
+    card_status = _char(100, verbose_name="Card Status")
 
     Latency_7_days = models.TextField(max_length=100, null=True, blank=True, verbose_name="Latency Last 7 Days")
     V_packet_7_days = models.TextField(max_length=100, null=True, blank=True, verbose_name="V Packet Last 7 Days")
@@ -198,9 +198,9 @@ class DirectCall(models.Model):
     V_packet_3_months = models.TextField(max_length=100, null=True, blank=True, verbose_name="V Packet Last 3 Months")
     upload_file_01 = models.FileField(upload_to="crsc_uploads/", null=True, blank=True, verbose_name="Analysis File")
 
-    engineer_recommendation = _char(40, choices=ENGINEER_RECOMMENDATION_CHOICES, default="--")
+    engineer_recommendation = _char(40, choices=ENGINEER_RECOMMENDATION_CHOICES, default="--", verbose_name="Engineer Recommendation")
     chargable_or_not = _char(40, choices=CHARGEABLE_CHOICES, default="--", verbose_name="Chargeable or Not")
-    remarks = models.TextField(null=True, blank=True)
+    remarks = models.TextField(null=True, blank=True, verbose_name="Remarks")
     payment_status = _char(10, choices=PAYMENT_STATUS_CHOICES)
     hod_comment = models.TextField(null=True, blank=True, verbose_name="HOD Comment")
 
@@ -211,7 +211,7 @@ class DirectCall(models.Model):
     device_to_be_sent = _char(
         50, choices=DEVICE_SENT_LOCATION_CHOICES, verbose_name="Faulty Device Sent to Location"
     )
-    dealer_address = models.TextField(null=True, blank=True)
+    dealer_address = models.TextField(null=True, blank=True, verbose_name="Dealer Address")
 
 
     faulty_device_shipped_date = models.DateField(null=True, blank=True, verbose_name="Faulty Device Shipped Date")
@@ -226,8 +226,6 @@ class DirectCall(models.Model):
     new_device_fitted_in_vehicle = _char(3, choices=YES_NO_CHOICES, verbose_name="Repaired/New Device Fitted in Vehicle")
     new_device_working = _char(3, choices=YES_NO_CHOICES, verbose_name="Repaired/New Device Working")
 
-    # Who has to act next on a FIR repair/replace call — recomputed on every
-    # save, see compute_rr_responsibility().
     rr_responsibility = _char(100, verbose_name="RR Responsibility")
 
     # ------------------------------------------------------------------
@@ -251,18 +249,14 @@ class DirectCall(models.Model):
     next_follow_up_exp_date = _dt(verbose_name="Next Follow-Up Expected Date")
     al_updated_contact_no = models.TextField(null=True, blank=True, verbose_name="Alternate/Updated Contact No")
 
-    follow_up_updated_at = _dt()
-    al_updated_contact_no_updated_at = _dt()
+    follow_up_updated_at = _dt(verbose_name="Follow-Up Updated At")
+    al_updated_contact_no_updated_at = _dt(verbose_name="Alternate/Updated Contact No Updated At")
 
-    # Responsibility of the latest event (follow-up remark or AL Updated
-    # Contact No, whichever is newer) — recomputed on every Part-B save
-    # (see services/workflow.py) and stored so it can be filtered/exported
-    # at the database level, same convention as d1_tat/d2_tat/total_tat.
     responsibility = _char(50, verbose_name="Responsibility")
 
-    d1_tat = _char(20)
-    d2_tat = _char(20)
-    total_tat = _char(20)
+    d1_tat = _char(20, verbose_name="D1 TAT")
+    d2_tat = _char(20, verbose_name="D2 TAT")
+    total_tat = _char(20, verbose_name="Total TAT")
 
     def compute_rr_responsibility(self):
         """Who has to act next on a FIR repair/replace call. The first

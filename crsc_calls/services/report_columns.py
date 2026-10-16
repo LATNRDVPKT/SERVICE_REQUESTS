@@ -44,6 +44,8 @@ REPORT_COLUMNS = (
     [
         ("unique_id", "Unique ID"),
         ("date_of_complaint", "Date of Complaint"),
+        ("request_received_timestamp", "Request Recd Timestamp"),
+
         ("call_type", "Call Type"),
         ("vin", "VIN"),
         ("psn", "PSN"),
@@ -55,8 +57,6 @@ REPORT_COLUMNS = (
         ("rr_responsibility", "RR Responsibility"),
 
         ("ialert_ticket_no", "Ticket No"),
-        ("request_received_timestamp", "Mail Rec Timestamp"),
-        ("ialert_remarks", "Remarks in iAlert"),
         ("rating", "Rating"),
         ("customer_confirmation", "Confirmation"),
         ("complaint_raised_from_location", "Complaint Raised From Location"),
@@ -92,12 +92,18 @@ REPORT_COLUMNS = (
         ("updated_software", "Updated Software"),
         ("issue_identified", "Issue Identified"),
         ("issue_analysis", "Issue Analysis"),
+        ("follow_up_remark", "Latest Remark"),
+        ("follow_up_comment", "Latest Comment"),
+        ("follow_up_level", "Latest Follow-up Level"),
+        ("follow_up_engineer", "LatestEngineer Name"),
+        ("next_follow_up_exp_date", "Exp Review Date"),
+        ("latest_update", "Latest Update Timestamp"),        
     ]
     + _follow_up_group(1)
     + _follow_up_group(2)
     + _follow_up_group(3)
     + [
-        ("latest_update", "Latest Update"),
+
         ("engineer_recommendation", "Engineer Recommendation"),
         ("upload_file_01", "Analysis"),
         ("chargable_or_not", "Chargeable or Not"),
@@ -111,8 +117,6 @@ REPORT_COLUMNS = (
         ("customer_satisfaction", "Feedback"),
         ("customer_feedback", "Customer Feedback"),
         ("feedback_submission_datetime", "Feedback Submitted Datetime"),
-        ("follow_up_engineer", "Engineer Name"),
-        ("next_follow_up_exp_date", "Exp Review Date"),
         ("Latency_7_days", "Latency for Last 7 Days CC"),
         ("V_packet_7_days", "VPacket for Last 7 Days CC"),
         # ---- remaining Part-A / Part-B / history fields not in the layout ----
@@ -122,9 +126,7 @@ REPORT_COLUMNS = (
         ("veh_model", "Vehicle Model"),
         ("upload_file", "Upload File"),
         ("al_updated_contact_no", "Updated Contact No"),
-        ("follow_up_remark", "Follow-Up Remark"),
-        ("follow_up_comment", "Follow-Up Comment"),
-        ("follow_up_level", "Follow-Up"),
+
         ("S_trigger_date", "S Trigger Date"),
         ("s_trigger_completion_date", "S Trigger Completion Date"),
         ("C_trigger_date", "C Trigger Date"),

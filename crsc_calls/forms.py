@@ -184,16 +184,6 @@ class EngineerForm(forms.ModelForm):
             }),
         )
 
-        # Whole-form lock for engineer-level access: once a call leaves
-        # Pending, only admins may keep editing most fields — engineers get
-        # a read-only view otherwise. Follow-Up Remark/Comment are exempt
-        # from this (and every other lock in this form) at all times.
-        #
-        # Once the call is in a FIR closure status (FIR-Repair / FIR-Replace /
-        # FIR-Replace_Repair) the whole form is read-only for EVERY role —
-        # including Follow-Up Remark/Comment and Call Status. Only the
-        # faulty-device / replacement follow-through fields stay editable,
-        # and each of those locks once it is filled.
         self.in_fir_flow = bool(
             instance and instance.pk and (instance.call_status or "") in FIR_CLOSURE_STATUSES
         )
