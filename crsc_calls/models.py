@@ -33,6 +33,42 @@ CALL_TYPE_CHOICES = [
 
 YES_NO_CHOICES = [("", "Please Select"), ("Yes", "Yes"), ("No", "No")]
 
+VEHICLE_TYPE_CHOICES = [
+    ("", "Please Select"),
+    ("--", "--"),
+    ("Tipper", "Tipper"),
+    ("E-com", "E-com"),
+    ("Boss", "Boss"),
+    ("Haulage", "Haulage"),
+    ("Passenger", "Passenger"),
+    ("LCV", "LCV"),
+    ("EV-LCV", "EV-LCV"),
+    ("EV M&HV", "EV M&HV"),
+    ("T&T", "T&T"),
+    ("Others", "Others"),
+]
+
+ISSUE_IDENTIFIED_CHOICES = [
+    ("", "-- Select Issue Identified --"),
+    ("Not Powering ON", "Not Powering ON"),
+    ("No Periodic-Data", "No Periodic-Data"),
+    ("100% V Packet", "100% V Packet"),
+    ("Partial V Packet", "Partial V Packet"),
+    ("Latency", "Latency"),
+    ("Data Loss", "Data Loss"),
+    ("Future Date", "Future Date"),
+    ("CAN Issue", "CAN Issue"),
+    ("Sim- Reg Issue", "Sim- Reg Issue"),
+    ("SIM- Terminated", "SIM- Terminated"),
+    ("Not Latching BSNL - PLANT MODE", "Not Latching BSNL - PLANT MODE"),
+    ("Not Latching BSNL - ANY NETWORK", "Not Latching BSNL - ANY NETWORK"),
+
+    ("Veh Wriring Issue", "Veh Wriring Issue"),
+    ("Veh Fuse Issue", "Veh Fuse Issue"),
+    ("NRD", "NRD"),
+    ("Others", "Others"),
+]
+
 COMPLAINT_RAISED_CHOICES = [
     ("", "Please Select"), ("Customer", "Customer"), ("Dealer", "Dealer"),
     ("AL", "AL"), ("Plant", "Plant"), ("others", "Others"),
@@ -42,9 +78,6 @@ COMPLAINT_RAISED_THROUGH_CHOICES = [
     ("iAlert Portal", "iAlert Portal"), ("I-Alert PD API", "I-Alert PD API"), ("others", "Others"),
 ]
 
-# call_status — engineer-visible values plus the manager/admin-only FIR
-# closure values (FIR-Repair / FIR-Replace / FIR-Replace_Repair, see
-# forms.py::EngineerForm for the role-based split).
 CALL_STATUS_CHOICES = [
     ("Pending", "Pending"),
     ("Closed", "Closed"),
@@ -62,7 +95,7 @@ CALL_STATUS_CHOICES = [
 FIR_CLOSURE_STATUSES = {"FIR-Repair", "FIR-Replace", "FIR-Replace_Repair"}
 
 FOLLOW_UP_LEVEL_CHOICES = [("D1", "D1"), ("D2", "D2"), ("D3", "D3")]
-CUSTOMER_CLOSURE_STATUSES = {"Closed", "Closed-CI", "Resolved", "Auto-Resolved", "D1-D2-D3 Completed"}
+CUSTOMER_CLOSURE_STATUSES = {"Closed", "Closed-CI", "Cancelled","Resolved", "Auto-Resolved", "D1-D2-D3 Completed"}
 ENGINEER_RECOMMENDATION_CHOICES = [
     ("--", "--"), ("Repair", "Repair"), ("Replace", "Replace"), ("Replace_Repair", "Replace_Repair"),
 ]
@@ -121,7 +154,7 @@ class DirectCall(models.Model):
 
     end_customer_mail_id = models.EmailField(null=True, blank=True, verbose_name="Additional Customer Mail ID")
     veh_reg_no = _char(100, verbose_name="Vehicle Regn No")
-    vehicle_type = _char(100)
+    vehicle_type = _char(100, choices=VEHICLE_TYPE_CHOICES)
     vehicle_running_location = _char(100)
     state = _char(100)
     device_model = _char(100)
@@ -151,7 +184,7 @@ class DirectCall(models.Model):
     feedback_requested_at = _dt(verbose_name="Feedback Requested At")
     exist_software = _char(100, verbose_name="Existing Software")
     updated_software = _char(100)
-    issue_identified = _char(100)
+    issue_identified = _char(100, choices=ISSUE_IDENTIFIED_CHOICES)
     issue_analysis = _char(200, verbose_name="Final Analysis")
     issue_analysis = models.TextField(max_length=200, null=True, blank=True, verbose_name="Final Analysis")
     dealer_name = _char(200)
