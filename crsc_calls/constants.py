@@ -3,8 +3,8 @@
 # =============================================================================
 
 # Remarks available to every call, plus four extra remarks only offered for
-# direct_call (not iAlert calls) — SIM EXPIRED, DEVICE TO BE SENT FOR
-# REPAIR/REPLACE, CANCELLED.
+# Direct and Plant calls (not iAlert calls) — SIM EXPIRED, DEVICE TO BE SENT
+# FOR REPAIR/REPLACE, CANCELLED.
 COMMON_REMARKS = [
     "CONTACT DETAILS WRONG",
     "CUSTOMER ISSUE - DASHBOARD MODIFICATION",
@@ -31,14 +31,21 @@ DIRECT_CALL_ONLY_REMARKS = [
     "DEVICE TO BE SENT FOR REPAIR",
     "DEVICE TO BE SENT FOR REPLACE",
     "CANCELLED",
+    "PLANT CALL"
 ]
 
 ALL_REMARKS = COMMON_REMARKS + DIRECT_CALL_ONLY_REMARKS
 
 
+# Call types offered the full remark list (stored value is the display label,
+# e.g. "Direct Call"; the snake_case forms are kept for legacy/API rows).
+FULL_REMARK_CALL_TYPES = {"direct call", "direct_call", "plant call", "plant_call"}
+
+
 def remark_choices_for(call_type):
-    """direct_call gets the 4 extra remarks; every other call_type gets COMMON_REMARKS only."""
-    remarks = ALL_REMARKS if call_type == "direct_call" else COMMON_REMARKS
+    """Direct and Plant calls get all remarks; every other call_type gets COMMON_REMARKS only."""
+    full = (call_type or "").strip().lower() in FULL_REMARK_CALL_TYPES
+    remarks = ALL_REMARKS if full else COMMON_REMARKS
     return [("", "Please Select")] + [(r, r) for r in remarks]
 
 
