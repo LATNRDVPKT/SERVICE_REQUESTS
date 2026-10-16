@@ -131,10 +131,10 @@ def format_update_to_al(follow_up_level, remark):
 # E-mail CC lists — fill in for your own team. Left empty by default.
 # ---------------------------------------------------------------------------
 CRSC_ASSIGNMENT_CC = [
-     "sale@danlawtech.com","yogananda@danlawtech.com",""
+     "sales@danlawtech.com","yoganandam@danlawtech.com",""
 ]
 CRSC_CUSTOMER_CC = [
-     "alertcrsc@ashokleyland.com",
+     "alert.crsc@ashokleyland.com",
 ]
 
 # ---------------------------------------------------------------------------
@@ -144,10 +144,12 @@ CRSC_CUSTOMER_CC = [
 # values until real ones are supplied.
 # ---------------------------------------------------------------------------
 ENGINEER_CONTACT_MAP = {
-    "Engineer One": {"email": "engineer1@dummy-crsc.local", "phone": "9000000001"},
-    "Engineer Two": {"email": "engineer2@dummy-crsc.local", "phone": "9000000002"},
-    "Engineer Three": {"email": "engineer3@dummy-crsc.local", "phone": "9000000003"},
-    "Engineer Four": {"email": "engineer4@dummy-crsc.local", "phone": "9000000004"},
+    "Eliyas": {"email": "eliasp@danlawtech.com", "phone": "8675933448"},
+    "Yoga": {"email": "yoganandam@danlawtech.com", "phone": "7358035825"},
+    "eliyas": {"email": "eliasp@danlawtech.com", "phone": "8675933448"},
+
+    "Dilip": {"email": "dilipkumarn@danlawtech.com", "phone": "8667228349"},
+    "Narendra": {"email": "naredrareddyg@danlawtech.com", "phone": "8438121252"},
     "Engineer Five": {"email": "engineer5@dummy-crsc.local", "phone": "9000000005"},
     "Engineer Six": {"email": "engineer6@dummy-crsc.local", "phone": "9000000006"},
     "Engineer Seven": {"email": "engineer7@dummy-crsc.local", "phone": "9000000007"},
@@ -178,9 +180,9 @@ def resolve_engineer_contact(assigned_to):
 # convention as ENGINEER_CONTACT_MAP above.
 # ---------------------------------------------------------------------------
 DEVICE_LOCATION_EMAIL_MAP = {
-    "Goa": "goa-fir@dummy-crsc.local",
-    "Hyderabad": "hyderabad-fir@dummy-crsc.local",
-    "Chennai": "chennai-fir@dummy-crsc.local",
+    "Goa": "deepa@danlawems.com",
+    "Hyderabad": "lavanyv@danlawtech.com",
+    "Chennai": "sivanambirajant@danlawtech.com",
 }
 
 

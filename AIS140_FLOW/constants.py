@@ -131,17 +131,17 @@ PART_A_ASSIGNMENT_CC = []
 # id, TSM, plus these fixed addresses.
 # ---------------------------------------------------------------------------
 AIS140_FIXED_RECIPIENTS = [
-    "Venkatasubramanian.S@shokleyland.com",
-    "Kry_karthikeyan@shokleyland.com",
+    "Venkatasubramanian.S@ashokleyland.com",
+    "Kry_karthikeyan@ashokleyland.com",
 ]
 SHOW_STOPPER_CC = [
-    "sales@anlawtech.com",
-    "dilipkumarn@anlawtech.com",
+    "sales@danlawtech.com",
+    "dilipkumarn@danlawtech.com",
 ]
 COMPLETION_CC = [
-    "sales@anlawtech.com",
-    "naredrareddyg@anlawtech.com",
-    "dilipkumarn@anlawtech.com",
+    "sales@danlawtech.com",
+    "naredrareddyg@danlawtech.com",
+    "dilipkumarn@danlawtech.com",
 ]
 COMPLETION_STATE_EXTRA_EMAILS = {
     "KARNATAKA": ["sales.hubli@amlmotors.com"],
