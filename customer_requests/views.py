@@ -104,7 +104,7 @@ def manager_form(request, call_id=None):
     else:
         form = ManagerForm(instance=entry, engineer_choices=_engineer_choices())
 
-    return render(request, "customer_requests/manager_form.html", {"form": form, "call": entry, "is_new": is_new})
+    return render(request, "customer_requests/create_ticket.html", {"form": form, "call": entry, "is_new": is_new})
 
 def customer_feedback(request, token):
     """Public (no login) page the customer reaches from the feedback e-mail.
@@ -167,7 +167,7 @@ def engineer_form(request, call_id):
                     push_follow_up_to_ialert(updated)
                 except IAlertPushError as exc:
                     messages.error(request, f"Not submitted — AL iAlert API rejected this update: {exc}")
-                    return render(request, "customer_requests/engineer_form.html", {"form": form, "call": call, "role": role})
+                    return render(request, "customer_requests/update_remarks.html", {"form": form, "call": call, "role": role})
 
             was_fir = previous.call_status == "FIR - For approval"
             updated.save()
@@ -219,7 +219,7 @@ def engineer_form(request, call_id):
     else:
         form = EngineerForm(instance=call, role=role, call_type=call.call_type)
 
-    return render(request, "customer_requests/engineer_form.html", {"form": form, "call": call, "role": role})
+    return render(request, "customer_requests/update_remarks.html", {"form": form, "call": call, "role": role})
 
 PAGE_SIZE = 25
 

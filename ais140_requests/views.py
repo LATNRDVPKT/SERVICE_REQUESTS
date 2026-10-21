@@ -88,7 +88,7 @@ def manager_form(request, ticket_id=None):
     else:
         form = ManagerForm(instance=instance, engineer_choices=_engineer_choices())
 
-    return render(request, "ais140_requests/manager_form.html", {
+    return render(request, "ais140_requests/create_ticket.html", {
         "form": form, "ticket": instance, "is_new": is_new,
     })
 
@@ -149,7 +149,7 @@ def engineer_form(request, ticket_id):
     else:
         form = EngineerForm(instance=ticket)
 
-    return render(request, "ais140_requests/engineer_form.html", {
+    return render(request, "ais140_requests/update_remarks.html", {
         "form": form, "ticket": ticket, "read_only": read_only,
     })
 

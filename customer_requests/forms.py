@@ -118,7 +118,7 @@ class EngineerForm(forms.ModelForm):
 
     class Meta:
         model = DirectCall
-        # Exactly the fields engineer_form.html renders — a field in here that
+        # Exactly the fields update_remarks.html renders — a field in here that
         # isn't on the page would be blanked on every save.
         fields = [
             "al_updated_contact_no","follow_up_remark", "follow_up_comment","next_follow_up_exp_date",
