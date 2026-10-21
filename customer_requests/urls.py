@@ -3,9 +3,9 @@ from . import views
 from .api_views import CRSCTicketIntakeAPIView
 
 urlpatterns = [
-    path("manager_form/", views.manager_form, name="crsc_manager_form"),
-    path("manager_form/<int:call_id>/", views.manager_form, name="crsc_manager_form_edit"),
-    path("engineer_form/<int:call_id>/", views.engineer_form, name="crsc_engineer_form"),
+    path("create_ticket/", views.manager_form, name="crsc_manager_form"),
+    path("ticket_update/<int:call_id>/", views.manager_form, name="crsc_manager_form_edit"),
+    path("engineer_remarks_update/<int:call_id>/", views.engineer_form, name="crsc_engineer_form"),
 
     path("feedback/<str:token>/", views.customer_feedback, name="crsc_feedback"),
 

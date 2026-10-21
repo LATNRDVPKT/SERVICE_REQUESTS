@@ -3,9 +3,9 @@ from . import views
 from .api_views import AIS140TicketCreateAPIView, AIS140RemarksUpdateAPIView
 
 urlpatterns = [
-    path("part_a_form/", views.manager_form, name="ais140_manager_form"),
-    path("part_a_form/<int:ticket_id>/", views.manager_form, name="ais140_manager_form_edit"),
-    path("part_b_form/<int:ticket_id>/", views.engineer_form, name="ais140_engineer_form"),
+    path("create_ticket/", views.manager_form, name="ais140_manager_form"),
+    path("update_ticket/<int:ticket_id>/", views.manager_form, name="ais140_manager_form_edit"),
+    path("engineer_remarks_update/<int:ticket_id>/", views.engineer_form, name="ais140_engineer_form"),
     path("success/", views.success_page, name="success_page"),
 
     path("export/", views.export_page, name="export_page"),
