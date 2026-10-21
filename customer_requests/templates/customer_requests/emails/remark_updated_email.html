@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ticket Update Notification</title>
+    <style>
+        th {
+            text-align: left;
+            background-color: rgb(240,240,240);
+            padding: 5px;
+        }
+        td {
+            padding: 5px;
+            width: 60%;
+            word-wrap: break-word;
+        }
+        .button {
+            display: inline-block;
+            background-color: #ff9800;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+        }
+        .button:hover { background-color: #e68a00; }
+    </style>
+</head>
+<body>
+    <div>
+        <h2>Ticket {{ call.unique_id }} Update Notification</h2>
+        <p>The following call has been updated with the remarks:</p>
+        <table border="1" cellpadding="5" cellspacing="0" class="table table-bordered">
+            <tbody>
+                <tr><th>Ticket Number</th><td>{{ call.unique_id|default:"" }}</td></tr>
+                <tr><th>VIN</th><td>{{ call.vin|default:"" }}</td></tr>
+                <tr><th>PSN</th><td>{{ call.psn|default:"" }}</td></tr>
+                <tr><th>Device Model</th><td>{{ call.device_model|default:"" }}</td></tr>
+                <tr><th>Last Communication of Device</th><td>{{ call.last_communication_in_darby|default:"" }}</td></tr>
+                <tr><th>Vehicle Type</th><td>{{ call.vehicle_type|default:"" }}</td></tr>
+                <tr><th>Kilometers/Hours</th><td>{{ call.kilometers_hours|default:"" }}</td></tr>
+                <tr><th>Main Battery Voltage</th><td>{{ call.main_battery_voltage|default:"" }}</td></tr>
+                <tr><th>Vehicle Running Location</th><td>{{ call.vehicle_running_location|default:"" }}</td></tr>
+                <tr><th>State</th><td>{{ call.state|default:"" }}</td></tr>
+                <tr><th>Issue Identified</th><td>{{ call.issue_identified|default:"" }}</td></tr>
+                <tr><th>Issue Analysis</th><td>{{ call.issue_analysis|default:"" }}</td></tr>
+                <tr><th>Latest Remarks</th><td>{{ call.follow_up_level|default:"" }}{% if call.follow_up_remark %} - {{ call.follow_up_remark }}{% endif %}</td></tr>
+                <tr><th>Latest Comments</th><td>{{ call.follow_up_comment|default:"" }}</td></tr>
+                <tr><th>Call Status</th><td>{{ call.call_status|default:"" }}</td></tr>
+                <tr><th>Date of Closure</th><td>{{ call.date_of_closure|default:"" }}</td></tr>
+            </tbody>
+        </table>
+        {% if engineer_form_url %}
+        <p><a href="{{ engineer_form_url }}" target="_blank" class="button">Fill Details</a></p>
+        {% endif %}
+
+        <p>Thank you,<br>Support Team</p>
+    </div>
+</body>
+</html>

@@ -7,11 +7,11 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("core.urls")),
     path("accounts/", include("accounts.urls")),
-    path("ais140/", include("AIS140_FLOW.urls")),
-    path("crsc/", include("crsc_calls.urls")),
+    path("ais140/", include("ais140_requests.urls")),
+    path("crsc/", include("customer_requests.urls")),
     path("billing/", include("billing.urls")),
-    path("data-search/", include("data_search.urls")),
-    path("trip-analysis/", include("trip_app.urls")),
+    path("data-search/", include("analysis.urls")),
+    path("trip-analysis/", include("trip_analysis.urls")),
 ]
 
 if settings.DEBUG:

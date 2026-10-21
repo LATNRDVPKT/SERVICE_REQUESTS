@@ -145,8 +145,8 @@ service_requests/
     service_requests/       # Django project settings, urls
     core/                   # shared base template, home page, admin_required decorator
     accounts/                # UserProfile, seed_users command, login
-    AIS140_FLOW/              # AIS140 module
-    crsc_calls/               # CRSC Calls module
+    ais140_requests/              # AIS140 module
+    customer_requests/               # CRSC Calls module
     billing/                  # Billing module (admin-only)
     templates/base.html       # shared layout every app extends
     static/css/style.css      # shared styling

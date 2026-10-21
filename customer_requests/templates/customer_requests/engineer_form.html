@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% load crsc_extras %}
+{% block title %}CRSC Follow Up — {{ call.unique_id }}{% endblock %}
+
+{% block content %}
+<div class="page-title">
+    <a class="eye-icon" title="View history" data-history-url="{% url 'crsc_call_history_partial' call.id %}">&#128065;</a>
+    Follow Up — {{ call.unique_id }}
+    {% if form.locked_for_role %}
+        <span class="page-title-hint"></span>
+    {% endif %}
+</div>
+
+<div class="card readonly-summary">
+    <div class="form-grid readonly-grid">
+        <div class="ro-field"><label>Unique ID</label><div>{{ call.unique_id }}</div></div>
+        <div class="ro-field"><label>Date of Complaint</label><div>{{ call.date_of_complaint|date:"d-m-Y H:i:s" }}</div></div>
+        <div class="ro-field"><label>Request Received Timestamp</label><div>{{ call.request_received_timestamp|date:"d-m-Y H:i:s" }}</div></div>
+        <div class="ro-field"><label>VIN</label><div>{{ call.vin }}</div></div>
+        <div class="ro-field"><label>PSN</label><div>{{ call.psn }}</div></div>
+        <div class="ro-field"><label>Complaint Raised From Location</label><div>{{ call.complaint_raised_from_location|default:"-" }}</div></div>
+        <div class="ro-field"><label>Customer Voice</label><div>{{ call.customer_raised_issue|default:"-" }}</div></div>
+        <div class="ro-field"><label>Contact Number</label><div>{{ call.contact_number|default:"-" }}</div></div>
+        <div class="ro-field"><label>Alternate Contact No</label><div>{{ call.al_updated_contact_no|default:"-" }}</div></div>
+        <div class="ro-field"><label>Complaint Raised</label><div>{{ call.complaint_raised|default:"-" }}</div></div>
+        <div class="ro-field"><label>Complaint Raised By</label><div>{{ call.complaint_raised_by|default:"-" }}</div></div> 
+        <div class="ro-field"><label>Customer Mail ID</label><div>{{ call.customer_mail_id|default:"-" }}</div></div>
+        <div class="ro-field"><label>Call Type</label><div>{{ call.call_type|default:"-" }}</div></div>
+        <div class="ro-field"><label>Engineer Responsible</label><div>{{ call.complaint_assigned_to|default:"-" }}</div></div>
+        <div class="ro-field"><label>Submitted To</label><div>{{ call.submitted_to_email|default:"-" }}</div></div>
+        <div class="ro-field"><label>iAlert Ticket No</label><div>{{ call.ialert_ticket_no|default:"-" }}</div></div>
+        <div class="ro-field"><label>iAlert Remarks</label><div>{{ call.ialert_remarks|default:"-" }}</div></div>
+    </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" id="crsc-part-b-form"
+      data-lock-field="follow_up_remark"
+      data-lock-message="Once a follow-up remark is submitted, it will be locked and cannot be edited again. Continue?">
+    {% csrf_token %}
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"follow_up_remark,follow_up_comment,call_status,al_updated_contact_no,date_of_closure,next_follow_up_exp_date" %}
+                    {% include "customer_requests/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"activation_start_date,activation_end_date,first_communication_in_darby,last_communication_in_darby,S_trigger_date,s_trigger_completion_date,C_trigger_date,c_trigger_completion_date,kilometers_hours,main_battery_voltage,vehicle_running_location,state,device_model,telco_status,active_profile,nrd_category,card_status,exist_software,al_mfg_plant" %}
+                    {% include "customer_requests/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"dealer_name, end_customer_mail_id,vehicle_sale_date, veh_reg_no,vehicle_type,veh_model,engine_type,updated_software,issue_identified,issue_analysis," %}
+                    {% include "customer_requests/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+
+
+
+    <div class="card">
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"Latency_7_days,V_packet_7_days,Latency_3_months,V_packet_3_months,upload_file_01,remarks" %}
+                    {% include "customer_requests/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card" id="fir-fields-card" {% if not call.call_status|in_list:"FIR - For approval,FIR-Repair,FIR-Replace,FIR-Replace_Repair" %}hidden{% endif %}>
+        <div class="card-subtitle">Shown and required when Call Status is "FIR - For approval", "FIR-Repair", "FIR-Replace" or "FIR-Replace_Repair".</div>
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"external_modification,device_IMEI,device_ICCID,device_to_be_sent,dealer_address,engineer_recommendation,chargable_or_not,payment_status,hod_comment" %}
+                    {% include "customer_requests/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card" id="fir-flow-card" {% if not call.call_status|in_list:"FIR-Repair,FIR-Replace,FIR-Replace_Repair" %}hidden{% endif %}>
+        <div class="card-subtitle">Faulty device / replacement follow-through. Each field locks once it is filled.</div>
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name|in_list:"faulty_device_shipped_date,faulty_device_shipped_thru,faulty_device_shipped_lr_details,faulty_device_reached_date,faulty_device_confirmation,new_device_serial_no,mapping_completed,validity_transfer_completed,commercial_expiry_date,new_device_fitted_in_vehicle,new_device_working" %}
+                    {% include "customer_requests/partials/field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="btn-row">
+        {% if not form.locked_for_role or form.fir_flow_open %}<button type="submit" class="btn">Save Call</button>{% endif %}
+        <a href="{% url 'crsc_real_time_page' %}" class="btn secondary">Back to Dashboard</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    var statusField = document.getElementById("id_call_status");
+    var firCard = document.getElementById("fir-fields-card");
+    var flowCard = document.getElementById("fir-flow-card");
+    if (!statusField || !firCard) return;
+    function toggle() {
+        var firStatuses = ["FIR - For approval", "FIR-Repair", "FIR-Replace", "FIR-Replace_Repair"];
+        var flowStatuses = ["FIR-Repair", "FIR-Replace", "FIR-Replace_Repair"];
+        firCard.hidden = firStatuses.indexOf(statusField.value) === -1;
+        if (flowCard) flowCard.hidden = flowStatuses.indexOf(statusField.value) === -1;
+    }
+    statusField.addEventListener("change", toggle);
+    toggle();
+})();
+</script>
+{% endblock %}

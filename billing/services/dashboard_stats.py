@@ -2,7 +2,7 @@
 # billing — services/dashboard_stats.py
 # Chart data for the Real-Time dashboard, computed from whatever queryset
 # is currently on screen — same "moves with the filters" approach as
-# AIS140/crsc_calls's dashboard stats.
+# AIS140/customer_requests's dashboard stats.
 # =============================================================================
 from django.db.models import Sum
 

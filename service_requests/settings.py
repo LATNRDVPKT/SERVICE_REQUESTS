@@ -1,10 +1,12 @@
 """
 Django settings for the Service Requests project.
 
-Three workflow apps share this one project and one login:
-  - AIS140_FLOW  — AIS140 certification tickets
-  - crsc_calls   — CRSC (customer complaint) call tracking
-  - billing      — invoice / payment tracking (admin-only)
+These apps share this one project and one login:
+  - customer_requests — customer complaint requests (formerly crsc_calls)
+  - ais140_requests   — AIS140 certification requests (formerly AIS140_FLOW)
+  - analysis          — 7 Days Analysis / Darby data lookups (formerly data_search)
+  - trip_analysis     — trip file analysis (formerly trip_app)
+  - billing           — invoice / payment tracking (admin-only)
 
 All secrets and environment-specific values come from environment
 variables — see .env.example for the full list.
@@ -58,16 +60,16 @@ INSTALLED_APPS = [
     "rest_framework",
     "core",
     "accounts",
-    "AIS140_FLOW",
-    "crsc_calls",
+    "ais140_requests",
+    "customer_requests",
     "billing",
-    "data_search",
-    "trip_app",
+    "analysis",
+    "trip_analysis",
 ]
 
 # ---------------------------------------------------------------------------
 # Django REST Framework — used for machine-to-machine intake endpoints
-# (e.g. crsc_calls' AL ticket create/update API). No DRF auth classes
+# (e.g. customer_requests' AL ticket create/update API). No DRF auth classes
 # configured by default; individual APIViews opt into AllowAny explicitly
 # since these are server-to-server webhooks, not user-facing endpoints.
 # ---------------------------------------------------------------------------
@@ -171,7 +173,7 @@ EMAIL_TIMEOUT = int(env("EMAIL_TIMEOUT", "15"))
 # ---------------------------------------------------------------------------
 # iAlert / Darby — credentials from environment only
 # ---------------------------------------------------------------------------
-# crsc_calls -> AL iAlert push (token-generate-then-push flow).
+# customer_requests -> AL iAlert push (token-generate-then-push flow).
 CRSC_IALERT_LOGIN_URL = env(
     "CRSC_IALERT_LOGIN_URL",
     "https://ialertoperation.ashokleyland.com/operation/ialertelite/api/login/generate-token",
@@ -182,8 +184,8 @@ CRSC_IALERT_PUSH_URL = env(
 )
 CRSC_IALERT_LOGIN_TOKEN_HEADER_VALUE = env("CRSC_IALERT_LOGIN_TOKEN_HEADER_VALUE", "")
 
-# AIS140_FLOW -> AL iAlert push (same token-generate-then-push flow as
-# crsc_calls above, separate URLs/credential since it's a different AL
+# ais140_requests -> AL iAlert push (same token-generate-then-push flow as
+# customer_requests above, separate URLs/credential since it's a different AL
 # integration). Fill in the real values once AL provides them.
 AIS140_IALERT_LOGIN_URL = env("AIS140_IALERT_LOGIN_URL", "")
 AIS140_IALERT_PUSH_URL = env("AIS140_IALERT_PUSH_URL", "")
@@ -196,7 +198,7 @@ AL_API_TOKEN = env("AL_API_TOKEN", "")
 DARBY_SEARCH_URL = env("DARBY_SEARCH_URL", "https://api.al.drivewithdarby.com/v1/assets/dynamic/search")
 DARBY_BEARER_TOKEN = env("DARBY_BEARER_TOKEN", "")
 DARBY_REQUEST_TIMEOUT = int(env("DARBY_REQUEST_TIMEOUT", "10"))
-# data_search's "7 Days Analysis" page — Darby's per-asset communication
+# analysis's "7 Days Analysis" page — Darby's per-asset communication
 # summary API (separate domain/base path from the search API above).
 DARBY_ANALYTICS_BASE_URL = env("DARBY_ANALYTICS_BASE_URL", "https://web.al.drivewithdarby.com/v1/messages/asset")
 

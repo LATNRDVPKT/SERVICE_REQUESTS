@@ -1,0 +1,190 @@
+# =============================================================================
+# customer_requests — services/email_utils.py
+# Standard Django SMTP e-mail, same pattern as ais140_requests/services/email_utils.py.
+# =============================================================================
+import logging
+
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+
+from customer_requests.constants import CRSC_ASSIGNMENT_CC, CRSC_CUSTOMER_CC
+from customer_requests.services.fir_pdf import generate_fir_pdf
+
+logger = logging.getLogger(__name__)
+
+
+def _send(subject, template_name, context, to, cc=None, attachment=None, raw_attachments=None):
+    """`attachment` is a Django FieldFile (e.g. call.upload_file). `raw_attachments`
+    is an optional list of (filename, content_bytes, mimetype) tuples — for
+    e.g. a generated PDF that never touches disk."""
+    if not to:
+        logger.warning("No recipient for e-mail '%s' — skipping send.", subject)
+        return False
+
+    html_body = render_to_string(template_name, context)
+    message = EmailMultiAlternatives(
+        subject=subject, body=html_body, from_email=settings.DEFAULT_FROM_EMAIL,
+        to=to if isinstance(to, (list, tuple)) else [to], cc=cc or [],
+    )
+    message.attach_alternative(html_body, "text/html")
+
+    if attachment:
+        try:
+            attachment.open()
+            message.attach(attachment.name.split("/")[-1], attachment.read(), None)
+        except Exception:  # noqa: BLE001
+            logger.exception("Could not attach file to e-mail '%s'", subject)
+
+    for filename, content, mimetype in (raw_attachments or []):
+        message.attach(filename, content, mimetype)
+
+    try:
+        message.send(fail_silently=False)
+        logger.info("E-mail SENT — subject=%r to=%s cc=%s", subject, message.to, message.cc)
+        return True
+    except Exception:  # noqa: BLE001
+        logger.exception("E-mail FAILED — subject=%r to=%s cc=%s", subject, message.to, message.cc)
+        return False
+
+
+def send_assignment_email(call, engineer_form_url):
+    if not call.submitted_to_email:
+        return False
+    return _send(
+        subject=f"{call.unique_id} CRSC Assigned to {call.complaint_assigned_to} on {call.vin}",
+        template_name="customer_requests/emails/manager_email.html",
+        context={"call": call, "engineer_form_url": engineer_form_url},
+        to=[call.submitted_to_email], cc=CRSC_ASSIGNMENT_CC, attachment=call.upload_file,
+    )
+
+
+def send_customer_email(call):
+    """Ticket-created notification — goes TO the customer, with the
+    assigned engineer CC'd (not addressed directly) so the customer sees
+    one clear "your ticket was created" e-mail."""
+    recipients = [e.strip() for e in (call.customer_mail_id or "").split(";") if e.strip()] + [e.strip() for e in (call.end_customer_mail_id or "").split(";") if e.strip()]
+    if not recipients or call.complaint_assigned_to == "--":
+        return False
+    cc = list(CRSC_CUSTOMER_CC)
+    if call.submitted_to_email:
+        cc.append(call.submitted_to_email)
+    return _send(
+        subject=f"Ticket Created: {call.unique_id} on Your Request",
+        template_name="customer_requests/emails/customer_email.html",
+        context={"call": call},
+        to=recipients, cc=cc,
+    )
+
+
+def send_fir_approval_email(call, recipients, engineer_form_url=None):
+    if not recipients:
+        return False
+    return _send(
+        subject=f"[CRSC] FIR Approval Requested — {call.unique_id}",
+        template_name="customer_requests/emails/fir_approval_email.html",
+        context={"call": call, "engineer_form_url": engineer_form_url},
+        to=recipients,
+    )
+
+
+def send_remark_updated_email(call, engineer_form_url=None):
+    """Sent to the assigned engineer every time a new follow-up round
+    (Follow-Up Remark/Comment) is submitted, so they always have a record
+    of what was just logged against their call."""
+    if not call.submitted_to_email:
+        return False
+    return _send(
+        subject=f"{call.unique_id} — Follow-Up Updated ({call.follow_up_level})",
+        template_name="customer_requests/emails/remark_updated_email.html",
+        context={"call": call, "engineer_form_url": engineer_form_url},
+        to=[call.submitted_to_email], cc=CRSC_ASSIGNMENT_CC,
+    )
+
+
+def send_customer_remark_email(call):
+    """Sent to the customer (engineer CC'd) whenever a new follow-up round
+    is logged — same recipient shape as send_closure_email. Uses the same
+    template as the engineer copy, minus the internal Part-B link."""
+    recipients = [e.strip() for e in (call.customer_mail_id or "").split(";") if e.strip()]
+    if not recipients:
+        logger.warning("No customer e-mail on %s — follow-up update not sent to customer.", call.unique_id)
+        return False
+    cc = list(CRSC_CUSTOMER_CC)
+    if call.submitted_to_email:
+        cc.append(call.submitted_to_email)
+    return _send(
+        subject=f"{call.unique_id} — Follow-Up Updated ({call.follow_up_level})",
+        template_name="customer_requests/emails/remark_updated_email.html",
+        context={"call": call, "engineer_form_url": None},
+        to=recipients, cc=cc,
+    )
+
+
+def send_feedback_email(call, feedback_url):
+    """Asks the customer for feedback (link to the public feedback page).
+    Sent once the call leaves "Pending". Same recipient shape as
+    send_closure_email."""
+    recipients = [e.strip() for e in (call.customer_mail_id or "").split(";") if e.strip()]
+    if not recipients:
+        logger.warning("No customer e-mail on %s — feedback request not sent.", call.unique_id)
+        return False
+    cc = list(CRSC_CUSTOMER_CC)
+    if call.submitted_to_email:
+        cc.append(call.submitted_to_email)
+    return _send(
+        subject=f"{call.unique_id} — Please share your feedback",
+        template_name="customer_requests/emails/feedback_email.html",
+        context={"call": call, "feedback_url": feedback_url},
+        to=recipients, cc=cc,
+    )
+
+
+def send_closure_email(call, feedback_url=None):
+    """Sent to the customer (engineer CC'd) the first time a call reaches
+    one of CUSTOMER_CLOSURE_STATUSES — same recipient shape as
+    send_customer_email."""
+    recipients = [e.strip() for e in (call.customer_mail_id or "").split(";") if e.strip()]
+    if not recipients:
+        return False
+    cc = list(CRSC_CUSTOMER_CC)
+    if call.submitted_to_email:
+        cc.append(call.submitted_to_email)
+    return _send(
+        subject=f"{call.unique_id} — {call.call_status}",
+        template_name="customer_requests/emails/closure_email.html",
+        context={"call": call, "feedback_url": feedback_url},
+        to=recipients, cc=cc,
+    )
+
+
+def send_ialert_update_email(call, al_remark, al_comments="", engineer_form_url=None):
+    """Sent when AL pushes a "Contact Update" or reassignment remark via the
+    ticket-intake API (see api_views.py) — goes to the assigned engineer if
+    one is set yet, always CC'd to the internal assignment list, so an
+    AL-side push is never silent."""
+    recipients = [call.submitted_to_email] if call.submitted_to_email else []
+    if not recipients and not CRSC_ASSIGNMENT_CC:
+        return False
+    return _send(
+        subject=f"{call.unique_id} — AL iAlert Update",
+        template_name="customer_requests/emails/ialert_update_email.html",
+        context={"call": call, "al_remark": al_remark, "al_comments": al_comments, "engineer_form_url": engineer_form_url},
+        to=recipients or list(CRSC_ASSIGNMENT_CC), cc=CRSC_ASSIGNMENT_CC if recipients else [],
+    )
+
+
+def send_fir_pdf_email(call, recipient):
+    """Generates the FIR summary PDF and e-mails it to `recipient` — the
+    address resolved from Device to be Sent via
+    constants.resolve_fir_pdf_recipient()."""
+    if not recipient:
+        return False
+    pdf_bytes = generate_fir_pdf(call)
+    return _send(
+        subject=f"FIR — {call.unique_id} ({call.call_status})",
+        template_name="customer_requests/emails/fir_pdf_email.html",
+        context={"call": call},
+        to=[recipient], cc=CRSC_ASSIGNMENT_CC,
+        raw_attachments=[(f"FIR_{call.unique_id}.pdf", pdf_bytes, "application/pdf")],
+    )

@@ -33,7 +33,7 @@ from .models import BillingData
 from .services.history import diff_and_record
 
 # (key, column label) — single source of truth for the CSV export field
-# picker, same "pick your columns" pattern as AIS140/crsc_calls.
+# picker, same "pick your columns" pattern as AIS140/customer_requests.
 EXPORT_COLUMNS = [
     ("unique_id", "Unique ID"),
     ("invoice_no", "Invoice No"),
