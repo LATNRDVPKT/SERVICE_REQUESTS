@@ -32,7 +32,7 @@ from .services.email_utils import (
 )
 from .services.ialert import push_update_to_ialert, IAlertPushError
 from .services.latest_update import get_latest_ticket_update
-from .services.workflow import apply_engineer_form_rules, write_history_rows
+from .services.workflow import apply_engineer_form_rules, latest_certificate_date, write_history_rows
 from .services.export import (
     EXPORT_COLUMNS, DEFAULT_SELECTED_KEYS, build_row, selected_columns,
     export_columns_for, max_follow_up_number,
@@ -111,7 +111,13 @@ def engineer_form(request, ticket_id):
 
             was_terminal = previous.completion_status in TERMINAL_STATUSES
             becomes_terminal = updated.completion_status in TERMINAL_STATUSES
-            if not was_terminal and updated.completion_status in COMPLETION_DATE_TRIGGER_STATUSES:
+            # Completion Date = latest certificate date (Temporary / Permanent).
+            # Tickets closed without a certificate (Cancelled, Third Party
+            # Device-Rejected) still get "now" when they first close.
+            certificate_completion_date = latest_certificate_date(updated)
+            if certificate_completion_date:
+                updated.completion_date = certificate_completion_date
+            elif not was_terminal and updated.completion_status in COMPLETION_DATE_TRIGGER_STATUSES:
                 updated.completion_date = now()
             compute_tats(updated)
 

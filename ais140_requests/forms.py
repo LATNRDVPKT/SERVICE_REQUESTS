@@ -112,12 +112,11 @@ class EngineerForm(forms.ModelForm):
       - Attending Engineer is not a form field — the view stamps it from
         the logged-in user on every save (see views.engineer_form), so the
         audit trail always reflects who was actually authenticated.
-      - Update_to_AL_API is hand-picked by the engineer (Remark / Temporary
-        / Permanent). For AL-API tickets (request_id present and
-        ticket_through is "A.L API") it's mandatory, and whichever value is
-        chosen additionally requires its matching evidence — a Request
-        Remark/Comment for "Remark", the temporary certificate for
-        "Temporary", either permanent certificate for "Permanent".
+      - Update_to_AL_API is no longer a form field — it is set
+        automatically on save from what was uploaded (see
+        services/workflow.py). For AL-API tickets, a save that uploads no
+        certificate is pushed as a "Remark", so Request Remarks/Comments
+        are required in that case.
     """
 
     class Meta:
@@ -129,7 +128,7 @@ class EngineerForm(forms.ModelForm):
             "upload_certificate_in_ialert",
             "upload_certificate_in_ialert_01",
             "upload_certificate_in_ialert_02",
-            "Update_to_AL_API", "completion_status",
+            "completion_status",
             "certification_start_date", "certification_end_date",
 
         ]
@@ -205,27 +204,20 @@ class EngineerForm(forms.ModelForm):
         if not request_id or not str(request_id).strip():
             return cleaned  # manual ticket — no further API validation
 
-        # Update_to_AL_API is now hand-picked by the engineer — validate
-        # whatever they chose has the matching evidence behind it.
-        api_value = (cleaned.get("Update_to_AL_API") or "").strip()
-
-        # Update to AL API is mandatory for AL-API tickets — unless the AL
-        # Request ID is blank or Ticket Through isn't AL API (checked above).
-        if is_al_api_ticket and not api_value:
-            self.add_error("Update_to_AL_API", "Update to AL API is required for an AL-API ticket.")
-
-        if api_value == "Remark":
+        # Update to AL API is decided automatically on save. When this save
+        # uploads no certificate it goes to AL as a "Remark", which needs a
+        # Request Remark and Comment to send.
+        uploading_certificate = any(
+            self.files.get(field) for field in (
+                "upload_certificate_in_ialert",
+                "upload_certificate_in_ialert_01",
+                "upload_certificate_in_ialert_02",
+            )
+        )
+        if is_al_api_ticket and not uploading_certificate:
             if not filled("request_remarks"):
-                self.add_error("request_remarks", "Request Remarks is required when Update to A.L API is Remark.")
+                self.add_error("request_remarks", "Request Remarks is required when no certificate is uploaded.")
             if not filled("request_comments"):
-                self.add_error("request_comments", "Request Comments is required when Update to A.L API is Remark.")
-        elif api_value == "Temporary":
-            if not has_file("upload_certificate_in_ialert"):
-                self.add_error("upload_certificate_in_ialert",
-                                "Temporary Certificate is required when Update to A.L API is Temporary.")
-        elif api_value == "Permanent":
-            if not has_file("upload_certificate_in_ialert_01") and not has_file("upload_certificate_in_ialert_02"):
-                self.add_error("upload_certificate_in_ialert_01",
-                                "A Permanent Certificate (01 or 02) is required when Update to A.L API is Permanent.")
+                self.add_error("request_comments", "Request Comments is required when no certificate is uploaded.")
 
         return cleaned

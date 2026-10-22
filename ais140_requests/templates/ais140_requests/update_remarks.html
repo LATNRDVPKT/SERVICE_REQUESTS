@@ -62,7 +62,7 @@
     <div class="card">
         <div class="form-grid">
             {% for field in form %}
-                {% if field.name|in_list:"temp_cert_reqd,upload_certificate_in_ialert,temp_raised_by,upload_certificate_in_ialert_02,upload_certificate_in_ialert_01,completion_status,Update_to_AL_API,certification_start_date,certification_end_date" %}
+                {% if field.name|in_list:"temp_cert_reqd,upload_certificate_in_ialert,temp_raised_by,upload_certificate_in_ialert_02,upload_certificate_in_ialert_01,completion_status,certification_start_date,certification_end_date" %}
                     {% include "ais140_requests/partials/field.html" with field=field %}
                 {% endif %}
             {% endfor %}

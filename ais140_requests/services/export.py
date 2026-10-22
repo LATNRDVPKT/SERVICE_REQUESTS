@@ -60,7 +60,6 @@ EXPORT_COLUMNS = (
     + _follow_up_group(2)
     + [
         ("completion_status", "Completion Status", "field"),
-        ("Update_to_AL_API", "Update to A.L", "field"),
         ("completion_date", "Completion Date", "field"),
         ("reupdated_request_al", "Reassigned to DTIL", "field"),
         ("AL_remarks", "Reassigned Remarks", "field"),

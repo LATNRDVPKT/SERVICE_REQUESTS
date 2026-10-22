@@ -2,8 +2,9 @@
 # ais140_requests — services/workflow.py
 # All the engineer-form "on save" business rules live here so views.py stays thin:
 #   REQ-02  Automatic request closure timestamp
-#   REQ-04  Automatic Update_to_AL_API determination
-#   REQ-05  Automatic certificate date/time stamps
+#   REQ-04  Automatic Update_to_AL_API (from what this save uploaded)
+#   REQ-05  Automatic certificate date/time stamps + "raised by" engineer
+#           + completion date = latest certificate date
 #   REQ-06  Per-field update timestamps
 #   REQ-09  Update-history row creation (now includes attending_engineer)
 # =============================================================================
@@ -15,22 +16,27 @@ from ais140_requests.models import AIS140RequestUpdate
 def _blank(value):
     return value is None or (isinstance(value, str) and not value.strip())
 
-def determine_update_to_al_api(instance):
-    """
-    REQ-04 — priority order: Permanent -> Temporary -> Remark -> None.
-    Permanent is triggered by EITHER certificate file
-    (upload_certificate_in_ialert_01 OR _02) being present.
-    """
-    permanent_file = bool(instance.upload_certificate_in_ialert_01) or bool(instance.upload_certificate_in_ialert_02)
-    temporary_file = bool(instance.upload_certificate_in_ialert)
+def _file_name(file_field):
+    return file_field.name if file_field else ""
 
-    if permanent_file:
+
+def update_to_al_api_for_this_save(new_permanent_upload, new_temporary_upload):
+    """
+    REQ-04 — what this save sends to AL, decided automatically (the engineer
+    no longer picks it): a newly uploaded Permanent/Vahan certificate wins,
+    then a newly uploaded Temporary certificate, otherwise it's a Remark.
+    """
+    if new_permanent_upload:
         return "Permanent"
-    if temporary_file:
+    if new_temporary_upload:
         return "Temporary"
-    if not _blank(instance.request_remarks):
-        return "Remark"
-    return ""  # priority 4 — "No update"
+    return "Remark"
+
+
+def latest_certificate_date(ticket):
+    """Completion Date = the later of the Temporary / Permanent certificate dates."""
+    certificate_dates = [d for d in (ticket.temp_cert_date, ticket.permanent_cert_date) if d]
+    return max(certificate_dates) if certificate_dates else None
 
 def apply_engineer_form_rules(instance, previous):
     """
@@ -51,6 +57,7 @@ def apply_engineer_form_rules(instance, previous):
     prev_reupdated = previous.reupdated_request_al if previous else None
     prev_temp_cert_name = previous.upload_certificate_in_ialert.name if previous and previous.upload_certificate_in_ialert else ""
     prev_perm_cert_name = previous.upload_certificate_in_ialert_01.name if previous and previous.upload_certificate_in_ialert_01 else ""
+    prev_vahan_cert_name = _file_name(previous.upload_certificate_in_ialert_02) if previous else ""
 
     # ------------------------------------------------------------------
     # Request Remarks / Comments never lock — every actual change is
@@ -98,12 +105,16 @@ def apply_engineer_form_rules(instance, previous):
         ))
 
     # ------------------------------------------------------------------
-    # REQ-05 — certificate dates, only when the file actually changed
+    # REQ-05 — certificate dates and "raised by", only when the file
+    # actually changed. "Raised by" is the logged-in engineer (the view
+    # stamps attending_engineer from request.user before calling this).
     # ------------------------------------------------------------------
     new_temp_name = instance.upload_certificate_in_ialert.name if instance.upload_certificate_in_ialert else ""
-    if new_temp_name and new_temp_name != prev_temp_cert_name:
+    temporary_uploaded_now = bool(new_temp_name) and new_temp_name != prev_temp_cert_name
+    if temporary_uploaded_now:
         instance.temp_cert_date = timestamp
         instance.temp_cert_updated_at = timestamp
+        instance.temp_raised_by = instance.attending_engineer
         history_rows.append(dict(
             source_field="temporary_certificate",
             latest_remark=CERTIFICATE_EVENT_REMARKS["temporary_certificate"],
@@ -112,15 +123,25 @@ def apply_engineer_form_rules(instance, previous):
         ))
 
     new_perm_name = instance.upload_certificate_in_ialert_01.name if instance.upload_certificate_in_ialert_01 else ""
-    if new_perm_name and new_perm_name != prev_perm_cert_name:
+    permanent_uploaded_now = bool(new_perm_name) and new_perm_name != prev_perm_cert_name
+    if permanent_uploaded_now:
         instance.permanent_cert_date = timestamp
         instance.permanent_cert_updated_at = timestamp
+        instance.perm_raised_by = instance.attending_engineer
         history_rows.append(dict(
             source_field="permanent_certificate",
             latest_remark=CERTIFICATE_EVENT_REMARKS["permanent_certificate"],
             latest_comments="", remark_datetime=timestamp,
             attending_engineer=instance.attending_engineer,
         ))
+
+    new_vahan_name = _file_name(instance.upload_certificate_in_ialert_02)
+    vahan_uploaded_now = bool(new_vahan_name) and new_vahan_name != prev_vahan_cert_name
+
+    instance.Update_to_AL_API = update_to_al_api_for_this_save(
+        new_permanent_upload=permanent_uploaded_now or vahan_uploaded_now,
+        new_temporary_upload=temporary_uploaded_now,
+    )
 
     # ------------------------------------------------------------------
     # REQ-08 — responsibility, set from whichever event ends up latest
