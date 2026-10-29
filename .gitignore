@@ -12,3 +12,4 @@ seeded_credentials.txt
 !/logs/.gitkeep
 plant_credentials.txt
 team_credentials.txt
+user_credentials.xlsx

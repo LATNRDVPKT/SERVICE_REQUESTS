@@ -1,24 +1,39 @@
 """
-Locks plant logins (role="plant") into the CRSC plant screens.
+Keeps plant and finance users inside their own pages.
 
-A plant user may open only /crsc/plant/..., the login/logout pages and
-static files. Any other URL — the AIS140, billing and analysis modules, the
-normal CRSC dashboard and forms, the history popups, admin — bounces back to
-the plant dashboard, so the restriction can't be bypassed by typing a URL.
+- Plant users can only open /crsc/plant/
+- Finance users can only open /billing/
+
+Any other URL sends them back to their own dashboard.
 """
 from django.shortcuts import redirect
 
-ALLOWED_PREFIXES = ("/crsc/plant/", "/accounts/", "/static/")
+PLANT_ALLOWED_PATHS = ("/crsc/plant/", "/accounts/", "/static/")
+FINANCE_ALLOWED_PATHS = ("/billing/", "/accounts/", "/static/")
 
 
-class PlantAccessMiddleware:
+class RoleAccessMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        user = getattr(request, "user", None)
-        if user is not None and user.is_authenticated:
-            profile = getattr(user, "profile", None)
-            if profile is not None and profile.role == "plant" and not request.path.startswith(ALLOWED_PREFIXES):
-                return redirect("crsc_plant_dashboard")
+        role = get_role(request.user)
+        path = request.path
+
+        if role == "plant" and not path.startswith(PLANT_ALLOWED_PATHS):
+            return redirect("crsc_plant_dashboard")
+
+        if role == "finance" and not path.startswith(FINANCE_ALLOWED_PATHS):
+            return redirect("billing_real_time_page")
+
         return self.get_response(request)
+
+
+def get_role(user):
+    """Returns the user's role, or None if they are not logged in or have no profile."""
+    if not user.is_authenticated:
+        return None
+    profile = getattr(user, "profile", None)
+    if profile is None:
+        return None
+    return profile.role

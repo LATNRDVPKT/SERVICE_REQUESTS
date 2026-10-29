@@ -22,11 +22,5 @@
         <h3>Trip Analysis</h3>
         <p>Upload packet-log CSV file and get a Trip wise summary.</p>
     </a>
-    {% if user.profile.role == 'admin' %}
-    <a class="module-card" href="{% url 'billing_real_time_page' %}">
-        <h3>Billing</h3>
-        <p>Invoice tracking, payment due dates, GRN status.</p>
-    </a>
-    {% endif %}
 </div>
 {% endblock %}

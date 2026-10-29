@@ -1,5 +1,5 @@
 """
-Creates the project's 16 shared login accounts: 3 admins + 13 engineers.
+Creates the project's shared login accounts: admins, engineers, plants and finance.
 
 Usage:
     python manage.py seed_users
@@ -30,6 +30,13 @@ PLANTS = [
     ("plant_goa", "Goa Plant", "Goa"),
 ]
 
+# Finance logins — can open only the Billing module.
+FINANCE = [
+    ("cfo", "CFO"),
+    ("gowtham_finance", "Gowtham (Finance)"),
+    ("manager_finance", "Manager (Finance)"),
+]
+
 ENGINEERS = [
     ("eliyas", "Eliyas"),
     ("gayadhar", "Gayadhar"),
@@ -48,7 +55,7 @@ ENGINEERS = [
 
 
 class Command(BaseCommand):
-    help = "Seed the 16 shared accounts (3 admin + 13 engineer) used across AIS140 / CRSC Calls / Billing."
+    help = "Seed the shared login accounts (admin, engineer, plant, finance)."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -74,14 +81,16 @@ class Command(BaseCommand):
                 user.is_superuser = is_staff
                 user.save()
             UserProfile.objects.update_or_create(
-                user=user, defaults={"role": "admin" if is_staff else "engineer", "display_name": display_name}
+                user=user, defaults={"role": role, "display_name": display_name}
             )
-            created_rows.append((username, password or "(unchanged)", "Admin" if is_staff else "Engineer"))
+            created_rows.append((username, password or "(unchanged)", role.capitalize()))
 
         for username, display_name in ADMINS:
             upsert(username, display_name, role="admin", is_staff=True)
         for username, display_name in ENGINEERS:
             upsert(username, display_name, role="engineer", is_staff=False)
+        for username, display_name in FINANCE:
+            upsert(username, display_name, role="finance", is_staff=False)
 
         for username, display_name, location in PLANTS:
             user, is_new = User.objects.get_or_create(username=username)
@@ -106,7 +115,7 @@ class Command(BaseCommand):
         with open("seeded_credentials.txt", "w") as f:
             f.write(report + "\n")
 
-        self.stdout.write(self.style.SUCCESS("Seeded 16 accounts (3 admin, 13 engineer):"))
+        self.stdout.write(self.style.SUCCESS(f"Seeded {len(created_rows)} accounts:"))
         self.stdout.write(report)
         self.stdout.write(self.style.WARNING(
             "\nFull list also written to seeded_credentials.txt — distribute securely, "

@@ -5,6 +5,7 @@ ROLE_CHOICES = [
     ("admin", "Admin"),
     ("engineer", "Engineer"),
     ("plant", "Plant"),
+    ("finance", "Finance"),
 ]
 
 PLANT_LOCATION_CHOICES = [
@@ -17,8 +18,8 @@ PLANT_LOCATION_CHOICES = [
 class UserProfile(models.Model):
     """
     One profile per Django auth User, shared across all three modules
-    (AIS140, CRSC Calls, Billing). `role` decides admin-only access
-    (Billing) and `display_name` is what shows up as "Engineer" wherever
+    (AIS140, CRSC Calls, Billing). `role` decides admin-only access;
+    only finance users can open Billing and `display_name` is what shows up as "Engineer" wherever
     an app needs to attribute a record to a person, instead of a free-typed
     e-mail address.
     """

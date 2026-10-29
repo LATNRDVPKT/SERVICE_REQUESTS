@@ -191,6 +191,9 @@ table.rt-table a.eye-icon { cursor: pointer; text-decoration: none; margin-right
 .role-chip { font-size: 9.5px; text-transform: uppercase; padding: 1px 6px; border-radius: 8px; margin-left: 5px; }
 .role-admin { background: #8a5a1f; color: #fff; }
 .role-engineer { background: #2f6f4f; color: #fff; }
+.role-finance { background: #4a3f8a; color: #fff; }
+.logout-form { margin: 0; }
+.logout-form button { background: none; border: 0; padding: 0; font: inherit; color: #dbe3f0; text-decoration: underline; cursor: pointer; }
 
 .module-grid { display: flex; flex-wrap: wrap; gap: 14px; }
 .module-card {
@@ -285,6 +288,14 @@ table.rt-table a.eye-icon { cursor: pointer; text-decoration: none; margin-right
 .chart-box { flex: 1 1 420px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
 .chart-box canvas { max-height: 260px; }
 .chart-box h4 { margin: 0 0 6px; font-size: 12px; color: var(--navy); }
+
+/* Three charts side by side; stack them on narrow screens */
+.chart-row-3 { flex-wrap: nowrap; }
+.chart-row-3 .chart-box { flex: 1 1 0; min-width: 0; }
+@media (max-width: 900px) {
+    .chart-row-3 { flex-wrap: wrap; }
+    .chart-row-3 .chart-box { flex-basis: 100%; }
+}
 .chart-empty-msg {
     display: flex; align-items: center; justify-content: center; text-align: center;
     min-height: 180px; color: var(--muted); font-size: 12px; padding: 20px;

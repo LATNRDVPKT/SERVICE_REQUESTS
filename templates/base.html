@@ -19,6 +19,8 @@
             <nav>
                 {% if user.profile.role == 'plant' %}
                 <a href="{% url 'crsc_plant_dashboard' %}">Plant Dashboard</a>
+                {% elif user.profile.role == 'finance' %}
+                <a href="{% url 'billing_real_time_page' %}">Billing</a>
                 {% else %}
                 <a href="{% url 'home' %}">Home</a>
                 <a href="{% url 'real_time_page' %}">AIS140</a>
@@ -28,7 +30,6 @@
                 {% if user.profile.role == 'admin' %}
                 <a href="{% url 'ais140_manager_form' %}">New AIS140 Ticket</a>
                 <a href="{% url 'crsc_manager_form' %}">New CRSC Call</a>
-                <a href="{% url 'billing_real_time_page' %}">Billing</a>
                 {% endif %}
                 {% if user.is_staff %}<a href="/admin/">Admin</a>{% endif %}
                 {% endif %}
@@ -37,7 +38,10 @@
                 <span>{{ user.profile.display_name|default:user.username }}
                     <span class="role-chip role-{{ user.profile.role }}">{{ user.profile.role|default:"user" }}</span>
                 </span>
-                <a href="{% url 'logout' %}">Log out</a>
+                <form method="post" action="{% url 'logout' %}" class="logout-form">
+                    {% csrf_token %}
+                    <button type="submit">Log out</button>
+                </form>
             </div>
         </div>
     </header>

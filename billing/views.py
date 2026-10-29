@@ -1,6 +1,6 @@
 # =============================================================================
 # billing — views.py
-# Every view here is admin-only (core.decorators.admin_required).
+# Every view here is finance-only (core.decorators.finance_required).
 # =============================================================================
 import csv
 import json
@@ -13,7 +13,7 @@ from django.db.models.functions import Upper
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from core.decorators import admin_required
+from core.decorators import finance_required
 from .services.dashboard_stats import build_dashboard_stats
 
 BULK_TOKEN_SPLIT_RE = re.compile(r"[\s,;]+")
@@ -65,7 +65,7 @@ EXPORT_COLUMNS = [
 DEFAULT_EXPORT_KEYS = [key for key, _label in EXPORT_COLUMNS]
 
 
-@admin_required
+@finance_required
 def add_billing_data(request, pk=None):
     instance = get_object_or_404(BillingData, pk=pk) if pk else None
 
@@ -128,7 +128,7 @@ def _apply_filters(request, qs):
     return qs
 
 
-@admin_required
+@finance_required
 def real_time_page(request):
     qs = BillingData.objects.all().order_by("-invoice_date")
     qs = _apply_filters(request, qs)
@@ -172,14 +172,14 @@ def real_time_page(request):
     return render(request, "billing/real_time_page.html", context)
 
 
-@admin_required
+@finance_required
 def record_history_partial(request, pk):
     record = get_object_or_404(BillingData, pk=pk)
     history = record.history.all().order_by("-changed_at")
     return render(request, "billing/partials/history_modal.html", {"record": record, "history": history})
 
 
-@admin_required
+@finance_required
 def export_page(request):
     """Field-picker screen. Carries the dashboard's current filters forward
     (as hidden inputs) so the export matches whatever's currently on screen."""
@@ -191,7 +191,7 @@ def export_page(request):
     })
 
 
-@admin_required
+@finance_required
 def download_csv(request):
     valid_keys = {key for key, _label in EXPORT_COLUMNS}
     selected_keys = [k for k in request.GET.getlist("fields") if k in valid_keys] or DEFAULT_EXPORT_KEYS

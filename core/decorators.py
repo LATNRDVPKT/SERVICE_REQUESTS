@@ -26,3 +26,16 @@ def admin_required(view_func=None, *, message="This page is restricted to admin 
     if view_func is not None:
         return decorator(view_func)
     return decorator
+
+
+def finance_required(view_func):
+    """Only finance users can open this page."""
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        profile = getattr(request.user, "profile", None)
+        if profile is None or profile.role != "finance":
+            messages.error(request, "This page is restricted to finance users.")
+            return redirect("home")
+        return view_func(request, *args, **kwargs)
+    return wrapper
