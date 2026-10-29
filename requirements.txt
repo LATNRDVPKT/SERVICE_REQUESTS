@@ -6,6 +6,6 @@ requests
 gunicorn
 whitenoise
 reportlab
-pytz=
+pytz
 pandas
 openpyxl
